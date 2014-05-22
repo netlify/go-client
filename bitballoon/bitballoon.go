@@ -2,6 +2,7 @@ package bitballoon
 
 import(
   "io"
+  "io/ioutil"
   "path"
   "bytes"
   "errors"
@@ -49,6 +50,15 @@ type RequestOptions struct {
   RawBody io.Reader
   QueryParams *map[string]string
   Headers *map[string]string
+}
+
+type ErrorResponse struct {
+  Response *http.Response
+  Message string
+}
+
+func (r *ErrorResponse) Error() string {
+  return r.Message
 }
 
 func NewClient(config *Config) *Client {
@@ -114,6 +124,10 @@ func (c *Client) newRequest(method, apiPath string, options *RequestOptions)  (*
 	req.Header.Add("Accept", "application/json")
 	req.Header.Add("User-Agent", c.UserAgent)
 
+  if options != nil && options.JsonBody != nil {
+    req.Header.Set("Content-Type", "application/json")
+  }
+
   if options != nil && options.Headers != nil {
     for key, value := range *options.Headers {
       req.Header.Set(key, value)
@@ -156,5 +170,13 @@ func checkResponse(r *http.Response) error {
 	if c := r.StatusCode; 200 <= c && c <= 299 {
 		return nil
 	}
-	return errors.New("API Error")
+  errorResponse := &ErrorResponse{Response: r}
+  data, err := ioutil.ReadAll(r.Body)
+  if err == nil && data != nil {
+    errorResponse.Message = string(data)
+  } else {
+    errorResponse.Message = r.Status
+  }
+
+	return errorResponse
 }

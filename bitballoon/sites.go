@@ -3,12 +3,16 @@ package bitballoon
 import(
   "os"
   "io"
+  "io/ioutil"
   "fmt"
   "time"
   "path"
   "path/filepath"
+  "strings"
   "errors"
   "bytes"
+  "crypto/sha1"
+  "encoding/hex"
   "mime/multipart"
 )
 
@@ -45,6 +49,20 @@ type Site struct {
   Dir string
 }
 
+type DeployInfo struct {
+  Id string `json:"id"`
+  DeployId string `json:"deploy_id"`
+  Required []string `json:"required"`
+}
+
+type siteUpdate struct {
+  Name string `json:"name"`
+  CustomDomain string `json:"custom_domain"`
+  Password string `json:"password"`
+  NotificationEmail string `json:"notification_email"`
+  Files *map[string]string `json:"files"`
+}
+
 func (s *SitesService) Get(id string) (*Site, error) {
   site := new(Site)
 
@@ -63,13 +81,17 @@ func (s *SitesService) List() ([]Site, error) {
 
 func (s *SitesService) Update(site *Site) (error) {
 
-  if &site.Zip != nil {
-    return s.depoyZip(site)
+  if site.Zip != "" {
+    return s.deployZip(site)
   } else {
     return s.deployDir(site)
   }
 
-  return nil
+  options := &RequestOptions{JsonBody: site.mutableParams()}
+
+  _, err := s.client.Request("PUT", path.Join("/sites", site.Id), options, site)
+
+  return err
 }
 
 func (s *SitesService) WaitForReady(site *Site, timeout time.Duration) error {
@@ -113,7 +135,79 @@ func (s *SitesService) WaitForReady(site *Site, timeout time.Duration) error {
 }
 
 func (s *SitesService) deployDir(site *Site) error {
-  return nil
+  files := map[string]string{}
+
+  err := filepath.Walk(site.Dir, func(path string, info os.FileInfo, err error) error {
+    if info.IsDir() == false {
+      rel, err := filepath.Rel(site.Dir, path)
+      if err != nil {
+        return err
+      }
+
+      if strings.HasPrefix(rel, ".") || strings.Contains(rel, "/.") {
+        return nil
+      }
+
+      sha := sha1.New()
+      data, err := ioutil.ReadFile(path)
+
+      if err != nil {
+        return err
+      }
+
+      sha.Write(data)
+
+      files[rel] = hex.EncodeToString(sha.Sum(nil))
+    }
+
+    return nil
+  })
+
+  options := &RequestOptions{
+    JsonBody: &siteUpdate{
+      Name: site.Name,
+      CustomDomain: site.CustomDomain,
+      Password: site.Password,
+      NotificationEmail: site.NotificationEmail,
+      Files: &files,
+    },
+  }
+
+  fmt.Println("Files", files)
+
+  deployInfo := new(DeployInfo)
+  _, err = s.client.Request("PUT", filepath.Join("/sites", site.Id), options, deployInfo)
+
+  if err != nil {
+    return err
+  }
+
+  lookup := map[string]bool{}
+
+  for _, sha := range(deployInfo.Required) {
+    lookup[sha] = true
+  }
+
+  for path, sha := range(files) {
+    if lookup[sha] == true {
+      file, _ := os.Open(filepath.Join(site.Dir, path))
+      defer file.Close()
+
+      options = &RequestOptions{
+        RawBody: file,
+        Headers: &map[string]string{"Content-Type": "application/octet-stream"},
+      }
+      fmt.Println("Uploading %s", path)
+      _, err = s.client.Request("PUT", filepath.Join("/sites", site.Id, "files", path), options, nil)
+      if err != nil {
+        fmt.Println("Error", err)
+        return err
+      }
+    }
+  }
+
+
+  return err
 }
 
 func (s *SitesService) deployZip(site *Site) error {
@@ -134,10 +228,9 @@ func (s *SitesService) deployZip(site *Site) error {
   }
   io.Copy(fileWriter, fileReader)
 
-  writer.WriteField("name", site.Name)
-  writer.WriteField("custom_domain", site.CustomDomain)
-  writer.WriteField("password", site.Password)
-  writer.WriteField("notification_email", site.NotificationEmail)
+  for key, value := range *site.mutableParams() {
+    writer.WriteField(key, value)
+  }
 
   err = writer.Close()
   if err != nil {
@@ -150,4 +243,13 @@ func (s *SitesService) deployZip(site *Site) error {
   _, err = s.client.Request("PUT", path.Join("/sites", site.Id), options, nil)
 
   return err
+}
+
+func (site *Site) mutableParams() *map[string]string {
+  return &map[string]string{
+      "name": site.Name,
+      "custom_domain": site.CustomDomain,
+      "password": site.Password,
+      "notification_email": site.NotificationEmail,
+  }
 }

@@ -3,6 +3,7 @@ package commands
 import (
   "os"
   "fmt"
+  "strings"
   "path/filepath"
   "github.com/spf13/cobra"
   "github.com/bitballoon/bitballoon-go/bitballoon"
@@ -55,7 +56,12 @@ func deploy(cmd *cobra.Command, args []string) {
     return
   }
 
-  site.Zip = path
+  if strings.HasSuffix(path, ".zip") {
+    site.Zip = path
+  } else {
+    site.Dir = path
+  }
+
   err = client.Sites.Update(site)
 
   if err != nil {
