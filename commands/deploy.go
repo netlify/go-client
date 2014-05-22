@@ -62,13 +62,13 @@ func deploy(cmd *cobra.Command, args []string) {
 		site.Dir = path
 	}
 
-	err = client.Sites.Update(site)
+	err = site.Update()
 
 	if err != nil {
 		fmt.Println("Deploy failed with error: ", err)
 	}
 
-	err = client.Sites.WaitForReady(site, 0)
+	err = site.WaitForReady(0)
 	if err != nil {
 		fmt.Println("Error dring site processing: ", err)
 	}

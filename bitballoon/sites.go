@@ -5,9 +5,9 @@ import (
 	"crypto/sha1"
 	"encoding/hex"
 	"errors"
-	"fmt"
 	"io"
 	"io/ioutil"
+	"fmt"
 	"mime/multipart"
 	"os"
 	"path"
@@ -17,7 +17,7 @@ import (
 )
 
 var (
-	defaultTimeout time.Duration = 5 * 60 // seconds
+	defaultTimeout time.Duration = 5 * 60 // 5 minutes
 )
 
 type SitesService struct {
@@ -47,6 +47,8 @@ type Site struct {
 
 	Zip string
 	Dir string
+
+	client *Client
 }
 
 type DeployInfo struct {
@@ -64,9 +66,8 @@ type siteUpdate struct {
 }
 
 func (s *SitesService) Get(id string) (*Site, error) {
-	site := new(Site)
-
-	_, err := s.client.Request("GET", path.Join("/sites", id), nil, site)
+	site := &Site{Id: id, client: s.client}
+	err := site.refresh()
 
 	return site, err
 }
@@ -76,25 +77,42 @@ func (s *SitesService) List() ([]Site, error) {
 
 	_, err := s.client.Request("GET", "/sites", nil, sites)
 
+	for _, site := range(*sites) {
+		site.client = s.client
+	}
+
 	return *sites, err
 }
 
-func (s *SitesService) Update(site *Site) error {
+func (site *Site) apiPath() string {
+	return path.Join("/sites", site.Id)
+}
 
-	if site.Zip != "" {
-		return s.deployZip(site)
-	} else {
-		return s.deployDir(site)
+func (site *Site) refresh() error {
+	if site.Id == "" {
+		return errors.New("Cannot fetch site without an ID")
 	}
-
-	options := &RequestOptions{JsonBody: site.mutableParams()}
-
-	_, err := s.client.Request("PUT", path.Join("/sites", site.Id), options, site)
+	_, err := site.client.Request("GET", site.apiPath(), nil, site)
 
 	return err
 }
 
-func (s *SitesService) WaitForReady(site *Site, timeout time.Duration) error {
+func (site *Site) Update() error {
+
+	if site.Zip != "" {
+		return site.deployZip()
+	} else {
+		return site.deployDir()
+	}
+
+	options := &RequestOptions{JsonBody: site.mutableParams()}
+
+	_, err := site.client.Request("PUT", site.apiPath(), options, site)
+
+	return err
+}
+
+func (site *Site) WaitForReady(timeout time.Duration) error {
 	if site.State == "current" {
 		return nil
 	}
@@ -119,7 +137,7 @@ func (s *SitesService) WaitForReady(site *Site, timeout time.Duration) error {
 				break
 			}
 
-			site, err := s.Get(site.Id)
+			site, err := site.client.Sites.Get(site.Id)
 			if site != nil {
 				fmt.Println("Site state is now: ", site.State)
 			}
@@ -134,7 +152,7 @@ func (s *SitesService) WaitForReady(site *Site, timeout time.Duration) error {
 	return err
 }
 
-func (s *SitesService) deployDir(site *Site) error {
+func (site *Site) deployDir() error {
 	files := map[string]string{}
 
 	err := filepath.Walk(site.Dir, func(path string, info os.FileInfo, err error) error {
@@ -173,10 +191,8 @@ func (s *SitesService) deployDir(site *Site) error {
 		},
 	}
 
-	fmt.Println("Files", files)
-
 	deployInfo := new(DeployInfo)
-	_, err = s.client.Request("PUT", filepath.Join("/sites", site.Id), options, deployInfo)
+	_, err = site.client.Request("PUT", site.apiPath(), options, deployInfo)
 
 	if err != nil {
 		return err
@@ -198,7 +214,7 @@ func (s *SitesService) deployDir(site *Site) error {
 				Headers: &map[string]string{"Content-Type": "application/octet-stream"},
 			}
 			fmt.Println("Uploading %s", path)
-			_, err = s.client.Request("PUT", filepath.Join("/sites", site.Id, "files", path), options, nil)
+			_, err = site.client.Request("PUT", filepath.Join(site.apiPath(), "files", path), options, nil)
 			if err != nil {
 				fmt.Println("Error", err)
 				return err
@@ -209,7 +225,7 @@ func (s *SitesService) deployDir(site *Site) error {
 	return err
 }
 
-func (s *SitesService) deployZip(site *Site) error {
+func (site *Site) deployZip() error {
 	zipPath, err := filepath.Abs(site.Zip)
 	if err != nil {
 		return err
@@ -239,7 +255,7 @@ func (s *SitesService) deployZip(site *Site) error {
 	contentType := "multipar/form-data; boundary=" + writer.Boundary()
 	options := &RequestOptions{RawBody: body, Headers: &map[string]string{"Content-Type": contentType}}
 
-	_, err = s.client.Request("PUT", path.Join("/sites", site.Id), options, nil)
+	_, err = site.client.Request("PUT", site.apiPath(), options, nil)
 
 	return err
 }
