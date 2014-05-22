@@ -1,39 +1,39 @@
 package bitballoon
 
-import(
-  "io"
-  "io/ioutil"
-  "path"
-  "bytes"
-  "errors"
-  "net/http"
+import (
+	"bytes"
+	"code.google.com/p/goauth2/oauth"
+	"encoding/json"
+	"errors"
+	"io"
+	"io/ioutil"
+	"net/http"
 	"net/url"
-  "encoding/json"
-  "code.google.com/p/goauth2/oauth"
+	"path"
 )
 
 const (
 	libraryVersion = "0.1"
 	defaultBaseURL = "https://www.bitballoon.com"
-  apiVersion     = "v1"
+	apiVersion     = "v1"
 
-	userAgent      = "bitballoon-go/" + libraryVersion
+	userAgent = "bitballoon-go/" + libraryVersion
 )
 
 type Config struct {
-  ClientId string
-  ClientSecret string
-  AccessToken string
-  BaseUrl string
-  UserAgent string
+	ClientId     string
+	ClientSecret string
+	AccessToken  string
+	BaseUrl      string
+	UserAgent    string
 }
 
 type Client struct {
-  client *http.Client
-  BaseUrl *url.URL
-  UserAgent string
+	client    *http.Client
+	BaseUrl   *url.URL
+	UserAgent string
 
-  Sites *SitesService
+	Sites *SitesService
 }
 
 type Response struct {
@@ -46,77 +46,76 @@ type Response struct {
 }
 
 type RequestOptions struct {
-  JsonBody interface{}
-  RawBody io.Reader
-  QueryParams *map[string]string
-  Headers *map[string]string
+	JsonBody    interface{}
+	RawBody     io.Reader
+	QueryParams *map[string]string
+	Headers     *map[string]string
 }
 
 type ErrorResponse struct {
-  Response *http.Response
-  Message string
+	Response *http.Response
+	Message  string
 }
 
 func (r *ErrorResponse) Error() string {
-  return r.Message
+	return r.Message
 }
 
 func NewClient(config *Config) *Client {
-  client := &Client{}
+	client := &Client{}
 
-  if &config.BaseUrl != nil {
-    client.BaseUrl, _ = url.Parse(config.BaseUrl)
-  } else {
-    client.BaseUrl, _ = url.Parse(defaultBaseURL)
-  }
+	if &config.BaseUrl != nil {
+		client.BaseUrl, _ = url.Parse(config.BaseUrl)
+	} else {
+		client.BaseUrl, _ = url.Parse(defaultBaseURL)
+	}
 
-  if &config.AccessToken != nil {
-    t := &oauth.Transport{
-      Token: &oauth.Token{AccessToken: config.AccessToken},
-    }
-    client.client = t.Client()
-  }
+	if &config.AccessToken != nil {
+		t := &oauth.Transport{
+			Token: &oauth.Token{AccessToken: config.AccessToken},
+		}
+		client.client = t.Client()
+	}
 
-  if &config.UserAgent != nil {
-    client.UserAgent = config.UserAgent
-  } else {
-    client.UserAgent = userAgent
-  }
+	if &config.UserAgent != nil {
+		client.UserAgent = config.UserAgent
+	} else {
+		client.UserAgent = userAgent
+	}
 
-  client.Sites = &SitesService{client: client}
+	client.Sites = &SitesService{client: client}
 
-  return client
+	return client
 }
 
-func (c *Client) newRequest(method, apiPath string, options *RequestOptions)  (*http.Request, error) {
-  if c.client == nil {
-    return nil, errors.New("Client has not been authenticated")
-  }
+func (c *Client) newRequest(method, apiPath string, options *RequestOptions) (*http.Request, error) {
+	if c.client == nil {
+		return nil, errors.New("Client has not been authenticated")
+	}
 
-  rel, err := url.Parse(path.Join("api", apiVersion, apiPath))
+	rel, err := url.Parse(path.Join("api", apiVersion, apiPath))
 	if err != nil {
 		return nil, err
 	}
 
 	u := c.BaseUrl.ResolveReference(rel)
 
-  buf := new(bytes.Buffer)
+	buf := new(bytes.Buffer)
 
-
-  if options != nil && options.JsonBody != nil {
+	if options != nil && options.JsonBody != nil {
 		err := json.NewEncoder(buf).Encode(options.JsonBody)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-  var req *http.Request
+	var req *http.Request
 
-  if options != nil && options.RawBody != nil {
-    req, err = http.NewRequest(method, u.String(), options.RawBody)
-  } else {
-  	req, err = http.NewRequest(method, u.String(), buf)
-  }
+	if options != nil && options.RawBody != nil {
+		req, err = http.NewRequest(method, u.String(), options.RawBody)
+	} else {
+		req, err = http.NewRequest(method, u.String(), buf)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -124,39 +123,39 @@ func (c *Client) newRequest(method, apiPath string, options *RequestOptions)  (*
 	req.Header.Add("Accept", "application/json")
 	req.Header.Add("User-Agent", c.UserAgent)
 
-  if options != nil && options.JsonBody != nil {
-    req.Header.Set("Content-Type", "application/json")
-  }
+	if options != nil && options.JsonBody != nil {
+		req.Header.Set("Content-Type", "application/json")
+	}
 
-  if options != nil && options.Headers != nil {
-    for key, value := range *options.Headers {
-      req.Header.Set(key, value)
-    }
-  }
+	if options != nil && options.Headers != nil {
+		for key, value := range *options.Headers {
+			req.Header.Set(key, value)
+		}
+	}
 
 	return req, nil
 }
 
 func (c *Client) Request(method, path string, options *RequestOptions, decodeTo interface{}) (*Response, error) {
-  req, err := c.newRequest(method, path, options)
-  if err != nil {
-    return nil, err
-  }
+	req, err := c.newRequest(method, path, options)
+	if err != nil {
+		return nil, err
+	}
 
-  httpResponse, err := c.client.Do(req)
-  defer httpResponse.Body.Close()
+	httpResponse, err := c.client.Do(req)
+	defer httpResponse.Body.Close()
 
-  resp := &Response{Response: httpResponse}
+	resp := &Response{Response: httpResponse}
 
-  if err != nil {
-    return resp, err
-  }
+	if err != nil {
+		return resp, err
+	}
 
-  if err = checkResponse(httpResponse); err != nil {
-    return resp, err
-  }
+	if err = checkResponse(httpResponse); err != nil {
+		return resp, err
+	}
 
-  if decodeTo != nil {
+	if decodeTo != nil {
 		if writer, ok := decodeTo.(io.Writer); ok {
 			io.Copy(writer, httpResponse.Body)
 		} else {
@@ -170,13 +169,13 @@ func checkResponse(r *http.Response) error {
 	if c := r.StatusCode; 200 <= c && c <= 299 {
 		return nil
 	}
-  errorResponse := &ErrorResponse{Response: r}
-  data, err := ioutil.ReadAll(r.Body)
-  if err == nil && data != nil {
-    errorResponse.Message = string(data)
-  } else {
-    errorResponse.Message = r.Status
-  }
+	errorResponse := &ErrorResponse{Response: r}
+	data, err := ioutil.ReadAll(r.Body)
+	if err == nil && data != nil {
+		errorResponse.Message = string(data)
+	} else {
+		errorResponse.Message = r.Status
+	}
 
 	return errorResponse
 }

@@ -1,7 +1,7 @@
 package commands
 
 import (
-  "github.com/spf13/cobra"
+	"github.com/spf13/cobra"
 )
 
 var SiteId, AccessToken string
@@ -9,7 +9,7 @@ var SiteId, AccessToken string
 var BitBalloonCmd = &cobra.Command{
 	Use:   "bitballoon",
 	Short: "",
-	Long: "",
+	Long:  "",
 }
 
 func Execute() {
@@ -22,6 +22,6 @@ func AddCommands() {
 }
 
 func init() {
-  BitBalloonCmd.PersistentFlags().StringVarP(&SiteId, "site", "s", "", "site domain or id")
+	BitBalloonCmd.PersistentFlags().StringVarP(&SiteId, "site", "s", "", "site domain or id")
 	BitBalloonCmd.PersistentFlags().StringVarP(&AccessToken, "token", "t", "", "API acccess token (https://www.bitballoon.com/applications)")
 }
