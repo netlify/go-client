@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"code.google.com/p/goauth2/oauth"
 	"encoding/json"
+	"strings"
+	"strconv"
 	"errors"
 	"io"
 	"io/ioutil"
@@ -26,6 +28,8 @@ type Config struct {
 	AccessToken  string
 	BaseUrl      string
 	UserAgent    string
+
+	HttpClient   *http.Client
 }
 
 type Client struct {
@@ -48,13 +52,29 @@ type Response struct {
 type RequestOptions struct {
 	JsonBody    interface{}
 	RawBody     io.Reader
-	QueryParams *map[string]string
+	QueryParams *url.Values
 	Headers     *map[string]string
 }
 
 type ErrorResponse struct {
 	Response *http.Response
 	Message  string
+}
+
+type ListOptions struct {
+	Page int
+	PerPage int
+}
+
+func (o *ListOptions) toQueryParamsMap() *url.Values {
+	params := url.Values{}
+	if o.Page > 0 {
+		params["page"] = []string{strconv.Itoa(o.Page)}
+	}
+	if o.PerPage > 0 {
+		params["per_page"] = []string{strconv.Itoa(o.PerPage)}
+	}
+	return &params
 }
 
 func (r *ErrorResponse) Error() string {
@@ -64,13 +84,16 @@ func (r *ErrorResponse) Error() string {
 func NewClient(config *Config) *Client {
 	client := &Client{}
 
-	if &config.BaseUrl != nil {
+	if config.BaseUrl != "" {
 		client.BaseUrl, _ = url.Parse(config.BaseUrl)
 	} else {
 		client.BaseUrl, _ = url.Parse(defaultBaseURL)
 	}
 
-	if &config.AccessToken != nil {
+
+	if config.HttpClient != nil {
+		client.client = config.HttpClient
+	} else if config.AccessToken != "" {
 		t := &oauth.Transport{
 			Token: &oauth.Token{AccessToken: config.AccessToken},
 		}
@@ -93,7 +116,11 @@ func (c *Client) newRequest(method, apiPath string, options *RequestOptions) (*h
 		return nil, errors.New("Client has not been authenticated")
 	}
 
-	rel, err := url.Parse(path.Join("api", apiVersion, apiPath))
+	urlPath := path.Join("api", apiVersion, apiPath)
+	if options!= nil && options.QueryParams != nil && len(*options.QueryParams) > 0 {
+		urlPath = urlPath + "?" + options.QueryParams.Encode()
+	}
+	rel, err := url.Parse(urlPath)
 	if err != nil {
 		return nil, err
 	}
@@ -145,7 +172,7 @@ func (c *Client) Request(method, path string, options *RequestOptions, decodeTo 
 	httpResponse, err := c.client.Do(req)
 	defer httpResponse.Body.Close()
 
-	resp := &Response{Response: httpResponse}
+	resp := newResponse(httpResponse)
 
 	if err != nil {
 		return resp, err
@@ -165,6 +192,12 @@ func (c *Client) Request(method, path string, options *RequestOptions, decodeTo 
 	return resp, err
 }
 
+func newResponse(r *http.Response) *Response {
+	response := &Response{Response: r}
+	response.populatePageValues()
+	return response
+}
+
 func checkResponse(r *http.Response) error {
 	if c := r.StatusCode; 200 <= c && c <= 299 {
 		return nil
@@ -178,4 +211,48 @@ func checkResponse(r *http.Response) error {
 	}
 
 	return errorResponse
+}
+
+// populatePageValues parses the HTTP Link response headers and populates the
+// various pagination link values in the Reponse.
+func (r *Response) populatePageValues() {
+	if links, ok := r.Response.Header["Link"]; ok && len(links) > 0 {
+		for _, link := range strings.Split(links[0], ",") {
+			segments := strings.Split(strings.TrimSpace(link), ";")
+
+			// link must at least have href and rel
+			if len(segments) < 2 {
+				continue
+			}
+
+			// ensure href is properly formatted
+			if !strings.HasPrefix(segments[0], "<") || !strings.HasSuffix(segments[0], ">") {
+				continue
+			}
+
+			// try to pull out page parameter
+			url, err := url.Parse(segments[0][1 : len(segments[0])-1])
+			if err != nil {
+				continue
+			}
+			page := url.Query().Get("page")
+			if page == "" {
+				continue
+			}
+
+			for _, segment := range segments[1:] {
+				switch strings.TrimSpace(segment) {
+				case `rel="next"`:
+					r.NextPage, _ = strconv.Atoi(page)
+				case `rel="prev"`:
+					r.PrevPage, _ = strconv.Atoi(page)
+				case `rel="first"`:
+					r.FirstPage, _ = strconv.Atoi(page)
+				case `rel="last"`:
+					r.LastPage, _ = strconv.Atoi(page)
+				}
+
+			}
+		}
+	}
 }

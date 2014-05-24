@@ -65,39 +65,39 @@ type siteUpdate struct {
 	Files             *map[string]string `json:"files"`
 }
 
-func (s *SitesService) Get(id string) (*Site, error) {
+func (s *SitesService) Get(id string) (*Site, *Response, error) {
 	site := &Site{Id: id, client: s.client}
-	err := site.refresh()
+	resp, err := site.refresh()
 
-	return site, err
+	return site, resp, err
 }
 
-func (s *SitesService) List() ([]Site, error) {
+func (s *SitesService) List(options *ListOptions) ([]Site, *Response, error) {
 	sites := new([]Site)
 
-	_, err := s.client.Request("GET", "/sites", nil, sites)
+	reqOptions := &RequestOptions{QueryParams: options.toQueryParamsMap()}
+
+	resp, err := s.client.Request("GET", "/sites", reqOptions, sites)
 
 	for _, site := range(*sites) {
 		site.client = s.client
 	}
 
-	return *sites, err
+	return *sites, resp, err
 }
 
 func (site *Site) apiPath() string {
 	return path.Join("/sites", site.Id)
 }
 
-func (site *Site) refresh() error {
+func (site *Site) refresh() (*Response, error) {
 	if site.Id == "" {
-		return errors.New("Cannot fetch site without an ID")
+		return nil, errors.New("Cannot fetch site without an ID")
 	}
-	_, err := site.client.Request("GET", site.apiPath(), nil, site)
-
-	return err
+	return site.client.Request("GET", site.apiPath(), nil, site)
 }
 
-func (site *Site) Update() error {
+func (site *Site) Update() (*Response, error) {
 
 	if site.Zip != "" {
 		return site.deployZip()
@@ -107,9 +107,7 @@ func (site *Site) Update() error {
 
 	options := &RequestOptions{JsonBody: site.mutableParams()}
 
-	_, err := site.client.Request("PUT", site.apiPath(), options, site)
-
-	return err
+	return site.client.Request("PUT", site.apiPath(), options, site)
 }
 
 func (site *Site) WaitForReady(timeout time.Duration) error {
@@ -137,7 +135,7 @@ func (site *Site) WaitForReady(timeout time.Duration) error {
 				break
 			}
 
-			site, err := site.client.Sites.Get(site.Id)
+			site, _, err := site.client.Sites.Get(site.Id)
 			if site != nil {
 				fmt.Println("Site state is now: ", site.State)
 			}
@@ -152,7 +150,7 @@ func (site *Site) WaitForReady(timeout time.Duration) error {
 	return err
 }
 
-func (site *Site) deployDir() error {
+func (site *Site) deployDir() (*Response, error) {
 	files := map[string]string{}
 
 	err := filepath.Walk(site.Dir, func(path string, info os.FileInfo, err error) error {
@@ -192,10 +190,10 @@ func (site *Site) deployDir() error {
 	}
 
 	deployInfo := new(DeployInfo)
-	_, err = site.client.Request("PUT", site.apiPath(), options, deployInfo)
+	resp, err := site.client.Request("PUT", site.apiPath(), options, deployInfo)
 
 	if err != nil {
-		return err
+		return resp, err
 	}
 
 	lookup := map[string]bool{}
@@ -214,21 +212,21 @@ func (site *Site) deployDir() error {
 				Headers: &map[string]string{"Content-Type": "application/octet-stream"},
 			}
 			fmt.Println("Uploading %s", path)
-			_, err = site.client.Request("PUT", filepath.Join(site.apiPath(), "files", path), options, nil)
+			resp, err = site.client.Request("PUT", filepath.Join(site.apiPath(), "files", path), options, nil)
 			if err != nil {
 				fmt.Println("Error", err)
-				return err
+				return resp, err
 			}
 		}
 	}
 
-	return err
+	return resp, err
 }
 
-func (site *Site) deployZip() error {
+func (site *Site) deployZip() (*Response, error) {
 	zipPath, err := filepath.Abs(site.Zip)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	body := &bytes.Buffer{}
@@ -239,7 +237,7 @@ func (site *Site) deployZip() error {
 	defer fileReader.Close()
 
 	if err != nil {
-		return err
+		return nil, err
 	}
 	io.Copy(fileWriter, fileReader)
 
@@ -249,15 +247,13 @@ func (site *Site) deployZip() error {
 
 	err = writer.Close()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	contentType := "multipar/form-data; boundary=" + writer.Boundary()
 	options := &RequestOptions{RawBody: body, Headers: &map[string]string{"Content-Type": contentType}}
 
-	_, err = site.client.Request("PUT", site.apiPath(), options, nil)
-
-	return err
+	return site.client.Request("PUT", site.apiPath(), options, nil)
 }
 
 func (site *Site) mutableParams() *map[string]string {

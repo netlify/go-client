@@ -49,7 +49,7 @@ func deploy(cmd *cobra.Command, args []string) {
 	}
 
 	client := bitballoon.NewClient(config)
-	site, err := client.Sites.Get(SiteId)
+	site, _, err := client.Sites.Get(SiteId)
 
 	if err != nil {
 		fmt.Println("Error during deploy: %s", err)
@@ -62,7 +62,7 @@ func deploy(cmd *cobra.Command, args []string) {
 		site.Dir = path
 	}
 
-	err = site.Update()
+	_, err = site.Update()
 
 	if err != nil {
 		fmt.Println("Deploy failed with error: ", err)
