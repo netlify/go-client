@@ -22,24 +22,34 @@ const (
 	userAgent = "bitballoon-go/" + libraryVersion
 )
 
+// Config is used to configure the BitBalloon client.
+// Typically you'll just want to set an AccessToken
 type Config struct {
+	AccessToken  string
+
 	ClientId     string
 	ClientSecret string
-	AccessToken  string
+
 	BaseUrl      string
 	UserAgent    string
 
 	HttpClient   *http.Client
 }
 
+// The BitBalloon Client
 type Client struct {
 	client    *http.Client
+
 	BaseUrl   *url.URL
 	UserAgent string
 
-	Sites *SitesService
+	Sites   *SitesService
+	Deploys *DeployService
 }
 
+// BitBalloon API Response.
+// All API methods on the different client services will return a Response object.
+// For any list operation this object will hold pagination information
 type Response struct {
 	*http.Response
 
@@ -49,6 +59,7 @@ type Response struct {
 	LastPage  int
 }
 
+// RequestOptions for doing raw requests to the BitBalloon API
 type RequestOptions struct {
 	JsonBody    interface{}
 	RawBody     io.Reader
@@ -56,11 +67,13 @@ type RequestOptions struct {
 	Headers     *map[string]string
 }
 
+// ErrorResponse is returned when a request to the API fails
 type ErrorResponse struct {
 	Response *http.Response
 	Message  string
 }
 
+// All List methods takes a ListOptions object controlling pagination
 type ListOptions struct {
 	Page int
 	PerPage int
@@ -81,6 +94,7 @@ func (r *ErrorResponse) Error() string {
 	return r.Message
 }
 
+// NewClient returns a new BitBalloon API client
 func NewClient(config *Config) *Client {
 	client := &Client{}
 
@@ -107,6 +121,7 @@ func NewClient(config *Config) *Client {
 	}
 
 	client.Sites = &SitesService{client: client}
+	client.Deploys = &DeployService{client: client}
 
 	return client
 }
@@ -163,6 +178,11 @@ func (c *Client) newRequest(method, apiPath string, options *RequestOptions) (*h
 	return req, nil
 }
 
+// Request sends an authenticated HTTP request to the BitBalloon API
+//
+// When error is nil, resp always contains a non-nil Response object
+//
+// Generally methods on the various services should be used over raw API requests
 func (c *Client) Request(method, path string, options *RequestOptions, decodeTo interface{}) (*Response, error) {
 	req, err := c.newRequest(method, path, options)
 	if err != nil {

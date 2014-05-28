@@ -6,7 +6,6 @@ import (
 	"github.com/spf13/cobra"
 	"os"
 	"path/filepath"
-	"strings"
 )
 
 var deployCmd = &cobra.Command{
@@ -38,7 +37,7 @@ func deploy(cmd *cobra.Command, args []string) {
 	}
 
 	// Deploy
-	fmt.Println("Deploying site: %s - dir: %s", SiteId, path)
+	fmt.Println("Deploying site: %v - dir: %v", SiteId, path)
 
 	config := &bitballoon.Config{AccessToken: AccessToken}
 
@@ -52,25 +51,21 @@ func deploy(cmd *cobra.Command, args []string) {
 	site, _, err := client.Sites.Get(SiteId)
 
 	if err != nil {
-		fmt.Println("Error during deploy: %s", err)
+		fmt.Println("Error during deploy: %v", err)
 		return
 	}
 
-	if strings.HasSuffix(path, ".zip") {
-		site.Zip = path
-	} else {
-		site.Dir = path
-	}
-
-	_, err = site.Update()
+	deploy, _, err := site.Deploys.Create(path)
 
 	if err != nil {
 		fmt.Println("Deploy failed with error: ", err)
+		return
 	}
 
-	err = site.WaitForReady(0)
+	err = deploy.WaitForReady(0)
 	if err != nil {
 		fmt.Println("Error dring site processing: ", err)
+		return
 	}
 
 	fmt.Println("Site deployed to", site.Url)

@@ -20,14 +20,17 @@ var (
 	defaultTimeout time.Duration = 5 * 60 // 5 minutes
 )
 
+// SitesService is used to access all Site related API methods
 type SitesService struct {
 	client *Client
 }
 
+// Site represents a BitBalloon Site
 type Site struct {
 	Id     string `json:"id"`
 	UserId string `json:"user_id"`
 
+  // These fields can be updated through the API
 	Name              string `json:"name"`
 	CustomDomain      string `json:"custom_domain"`
 	Password          string `json:"password"`
@@ -45,12 +48,19 @@ type Site struct {
 	CreatedAt Timestamp `json:"created_at"`
 	UpdatedAt Timestamp `json:"updated_at"`
 
+	// Path to a zip file to deploy
 	Zip string
+
+	// Path to a directory to deploy
 	Dir string
+
+	// Access deploys for this site
+	Deploys *DeployService
 
 	client *Client
 }
 
+// Info returned when creating a new deploy
 type DeployInfo struct {
 	Id       string   `json:"id"`
 	DeployId string   `json:"deploy_id"`
@@ -65,13 +75,17 @@ type siteUpdate struct {
 	Files             *map[string]string `json:"files"`
 }
 
+// Get a single Site from the API. The id can be either a site Id or the domain
+// of a site (ie. site.Get("mysite.bitballoon.com"))
 func (s *SitesService) Get(id string) (*Site, *Response, error) {
 	site := &Site{Id: id, client: s.client}
+	site.Deploys = &DeployService{client: s.client, site: site}
 	resp, err := site.refresh()
 
 	return site, resp, err
 }
 
+// List all sites you have access to. Takes ListOptions to control pagination.
 func (s *SitesService) List(options *ListOptions) ([]Site, *Response, error) {
 	sites := new([]Site)
 
@@ -97,6 +111,9 @@ func (site *Site) refresh() (*Response, error) {
 	return site.client.Request("GET", site.apiPath(), nil, site)
 }
 
+// Update will update the fields that can be updated through the API
+// If a Zip or a Dir property is present for the site, a new version of the site
+// will be deployed
 func (site *Site) Update() (*Response, error) {
 
 	if site.Zip != "" {
@@ -110,6 +127,7 @@ func (site *Site) Update() (*Response, error) {
 	return site.client.Request("PUT", site.apiPath(), options, site)
 }
 
+// Waits for the latest deploy of a site to finish processing
 func (site *Site) WaitForReady(timeout time.Duration) error {
 	if site.State == "current" {
 		return nil
