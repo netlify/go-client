@@ -160,11 +160,22 @@ func (s *DeploysService) deployDir(dir string) (*Deploy, *Response, error) {
 
   for path, sha := range files {
     if lookup[sha] == true {
-      file, _ := os.Open(filepath.Join(dir, path))
+      file, err := os.Open(filepath.Join(dir, path))
       defer file.Close()
+
+      if err != nil {
+        return deploy, nil, err
+      }
+
+      info, err := file.Stat()
+
+      if err != nil {
+        return deploy, nil, err
+      }
 
       options = &RequestOptions{
         RawBody: file,
+        RawBodyLength: info.Size(),
         Headers: &map[string]string{"Content-Type": "application/octet-stream"},
       }
       resp, err = s.client.Request("PUT", filepath.Join(deploy.apiPath(), "files", path), options, nil)
@@ -186,11 +197,21 @@ func (s *DeploysService) deployZip(zip string) (*Deploy, *Response, error) {
   zipFile, err := os.Open(zipPath)
   defer zipFile.Close()
 
-  if (err != nil) {
+  if err != nil {
     return nil, nil, err
   }
 
-  options := &RequestOptions{RawBody: zipFile, Headers: &map[string]string{"Content-Type": "application/zip"}}
+  info, err := zipFile.Stat()
+
+  if err != nil {
+    return nil, nil, err
+  }
+
+  options := &RequestOptions{
+    RawBody: zipFile,
+    RawBodyLength: info.Size(),
+    Headers: &map[string]string{"Content-Type": "application/zip"},
+  }
 
   deploy := &Deploy{client: s.client}
   resp, err := s.client.Request("POST", s.apiPath(), options, deploy)

@@ -63,6 +63,7 @@ type Response struct {
 type RequestOptions struct {
 	JsonBody    interface{}
 	RawBody     io.Reader
+	RawBodyLength int64
 	QueryParams *url.Values
 	Headers     *map[string]string
 }
@@ -155,12 +156,15 @@ func (c *Client) newRequest(method, apiPath string, options *RequestOptions) (*h
 
 	if options != nil && options.RawBody != nil {
 		req, err = http.NewRequest(method, u.String(), options.RawBody)
+		req.ContentLength = options.RawBodyLength
 	} else {
 		req, err = http.NewRequest(method, u.String(), buf)
 	}
 	if err != nil {
 		return nil, err
 	}
+
+	req.TransferEncoding = []string{"identity"}
 
 	req.Header.Add("Accept", "application/json")
 	req.Header.Add("User-Agent", c.UserAgent)
@@ -190,7 +194,6 @@ func (c *Client) Request(method, path string, options *RequestOptions, decodeTo 
 	}
 
 	httpResponse, err := c.client.Do(req)
-	defer httpResponse.Body.Close()
 
 	resp := newResponse(httpResponse)
 
@@ -203,6 +206,7 @@ func (c *Client) Request(method, path string, options *RequestOptions, decodeTo 
 	}
 
 	if decodeTo != nil {
+		defer httpResponse.Body.Close()
 		if writer, ok := decodeTo.(io.Writer); ok {
 			io.Copy(writer, httpResponse.Body)
 		} else {
@@ -214,7 +218,9 @@ func (c *Client) Request(method, path string, options *RequestOptions, decodeTo 
 
 func newResponse(r *http.Response) *Response {
 	response := &Response{Response: r}
-	response.populatePageValues()
+	if r != nil {
+		response.populatePageValues()
+	}
 	return response
 }
 
