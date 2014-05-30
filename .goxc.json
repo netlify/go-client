@@ -4,7 +4,7 @@
 	"Os": "darwin,linux,windows",
 	"ResourcesInclude": "INSTALL*,README*,LICENSE*",
 	"ResourcesExclude": "*.go",
-	"PackageVersion": "0.1.0",
+	"PackageVersion": "0.1.1",
 	"Verbosity": "v",
 	"TaskSettings": {
 		"pkg-build": {
