@@ -2,7 +2,6 @@ package commands
 
 import (
   "log"
-/*  "github.com/bitballoon/bitballoon-go/bitballoon"*/
   "github.com/spf13/cobra"
 )
 

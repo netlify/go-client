@@ -1,0 +1,22 @@
+{
+	"ArtifactsDest": "target",
+	"Arch": "386,amd64",
+	"Os": "darwin,linux,windows",
+	"ResourcesInclude": "INSTALL*,README*,LICENSE*",
+	"ResourcesExclude": "*.go",
+	"PackageVersion": "0.1.0",
+	"Verbosity": "v",
+	"TaskSettings": {
+		"pkg-build": {
+			"metadata": {
+				"description": "BitBalloon command line client",
+				"maintainer": "Mathias Biilmann (https://www.bitballoon.com)"
+			},
+			"metadata-deb": {
+				"Depends": "",
+				"Homepage": ""
+			}
+		}
+	},
+	"ConfigVersion": "0.9"
+}
