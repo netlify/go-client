@@ -69,6 +69,7 @@ func (s *SitesService) Get(id string) (*Site, *Response, error) {
 	return site, resp, err
 }
 
+// Create a new empty site.
 func (s *SitesService) Create(attributes *SiteAttributes) (*Site, *Response, error) {
 	site := &Site{client: s.client}
 	site.Deploys = &DeploysService{client: s.client, site: site}

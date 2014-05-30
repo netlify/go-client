@@ -14,7 +14,7 @@
 			},
 			"metadata-deb": {
 				"Depends": "",
-				"Homepage": ""
+				"Homepage": "https://github.com/BitBalloon/bitballoon-go"
 			}
 		}
 	},
