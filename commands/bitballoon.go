@@ -4,7 +4,7 @@ import (
 	"os"
 	"log"
 	"github.com/spf13/cobra"
-	"github.com/bitballoon/bitballoon-go/bitballoon"
+	"github.com/BitBalloon/bitballoon-go/bitballoon"
 )
 
 var SiteId, AccessToken string

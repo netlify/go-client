@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/bitballoon/bitballoon-go/commands"
+	"github.com/BitBalloon/bitballoon-go/commands"
 )
 
 func main() {

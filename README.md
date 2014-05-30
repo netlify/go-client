@@ -2,6 +2,8 @@
 
 Fast command line tool for BitBalloon.
 
+See [the bitballoon package on godoc](http://godoc.org/github.com/BitBalloon/bitballoon-go/bitballoon) for go library documentation.
+
 ## Commands
 
 Assuming you've installed the binary as `bitballoon`:
