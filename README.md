@@ -1,33 +1,43 @@
-# BitBalloon CLI
+# BitBallon API Client in Go
 
-Fast command line tool for BitBalloon.
+See [the bitballoon package on godoc](http://godoc.org/github.com/BitBalloon/bitballoon-go) for full library documentation.
 
-See [the bitballoon package on godoc](http://godoc.org/github.com/BitBalloon/bitballoon-go/bitballoon) for go library documentation.
+## Quick Start
 
-## Commands
+First `go get github.com/BitBalloon/bitballoon-go` then use in your go project.
 
-Assuming you've installed the binary as `bitballoon`:
+```go
+import "github.com/BitBalloon/bitballoon-go"
 
-### bitballoon create
+client := bitballoon.NewClient(&bitballoon.Config{AccessToken: AccessToken})
 
-Creates a new site and returns the ID/URL
+// Create a new site
+site, resp, err := client.Sites.Create(&SiteAttributes{
+  Name: "site-subdomain",
+  CustomDomain: "www.example.com",
+  Password: "secret",
+  NotificationEmail: "me@example.com",
+})
 
-```bash
-$ bitballoon create --token <access-token>
-```
+// Deploy a directory
+deploy, resp, err := site.Deploys.Create("/path/to/directory")
 
-### bitballoon deploy
+// Wait for the deploy to process
+err := deploy.WaitForReady(0)
 
-Deploys a folder or zip file to a BitBalloon site
+// Get a single site
+site, resp, err := client.Sites.Get("my-site-id")
 
-```bash
-$ bitballoon deploy /path/to/site --token <access-token> --site <site-id>
-```
+// Set the domain of the site
+site.CustomDomain = "www.example.com"
 
-### bitballoon update
+// Update the site
+resp, err := site.Update()
 
-Updates name, domain, password or notification email of a site
+// Deploy a new version of the site from a zip file
+deploy, resp, err := site.Deploys.Create("/path/to/file.zip")
+deploy.WaitForReady(0)
 
-```bash
-$ bitballoon update --token <access-token> --site <site-id> --domain www.example.com
+// Delete the site
+resp, err := site.Destroy()
 ```
