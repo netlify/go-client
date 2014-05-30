@@ -1,28 +1,28 @@
 package bitballoon
 
 import (
-  "net/url"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
+	"reflect"
 	"testing"
-  "reflect"
 )
 
 var (
-  mux *http.ServeMux
-  client *Client
-  server *httptest.Server
+	mux    *http.ServeMux
+	client *Client
+	server *httptest.Server
 )
 
 func setup() {
-  mux = http.NewServeMux()
-  server = httptest.NewServer(mux)
+	mux = http.NewServeMux()
+	server = httptest.NewServer(mux)
 
-  client = NewClient(&Config{HttpClient: http.DefaultClient, BaseUrl: server.URL})
+	client = NewClient(&Config{HttpClient: http.DefaultClient, BaseUrl: server.URL})
 }
 
 func teardown() {
-  server.Close()
+	server.Close()
 }
 
 func testMethod(t *testing.T, r *http.Request, expected string) {

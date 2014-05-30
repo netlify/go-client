@@ -20,7 +20,7 @@ type Site struct {
 	Id     string `json:"id"`
 	UserId string `json:"user_id"`
 
-  // These fields can be updated through the API
+	// These fields can be updated through the API
 	Name              string `json:"name"`
 	CustomDomain      string `json:"custom_domain"`
 	Password          string `json:"password"`
@@ -53,10 +53,10 @@ type DeployInfo struct {
 
 // Attributes for Sites.Create
 type SiteAttributes struct {
-	Name              string             `json:"name"`
-	CustomDomain      string             `json:"custom_domain"`
-	Password          string             `json:"password"`
-	NotificationEmail string             `json:"notification_email"`
+	Name              string `json:"name"`
+	CustomDomain      string `json:"custom_domain"`
+	Password          string `json:"password"`
+	NotificationEmail string `json:"notification_email"`
 }
 
 // Get a single Site from the API. The id can be either a site Id or the domain
@@ -89,7 +89,7 @@ func (s *SitesService) List(options *ListOptions) ([]Site, *Response, error) {
 
 	resp, err := s.client.Request("GET", "/sites", reqOptions, sites)
 
-	for _, site := range(*sites) {
+	for _, site := range *sites {
 		site.client = s.client
 		site.Deploys = &DeploysService{client: s.client, site: &site}
 	}

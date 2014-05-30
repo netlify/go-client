@@ -4,14 +4,14 @@ import (
 	"bytes"
 	"code.google.com/p/goauth2/oauth"
 	"encoding/json"
-	"strings"
-	"strconv"
 	"errors"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"path"
+	"strconv"
+	"strings"
 )
 
 const (
@@ -25,20 +25,20 @@ const (
 // Config is used to configure the BitBalloon client.
 // Typically you'll just want to set an AccessToken
 type Config struct {
-	AccessToken  string
+	AccessToken string
 
 	ClientId     string
 	ClientSecret string
 
-	BaseUrl      string
-	UserAgent    string
+	BaseUrl   string
+	UserAgent string
 
-	HttpClient   *http.Client
+	HttpClient *http.Client
 }
 
 // The BitBalloon Client
 type Client struct {
-	client    *http.Client
+	client *http.Client
 
 	BaseUrl   *url.URL
 	UserAgent string
@@ -61,11 +61,11 @@ type Response struct {
 
 // RequestOptions for doing raw requests to the BitBalloon API
 type RequestOptions struct {
-	JsonBody    interface{}
-	RawBody     io.Reader
+	JsonBody      interface{}
+	RawBody       io.Reader
 	RawBodyLength int64
-	QueryParams *url.Values
-	Headers     *map[string]string
+	QueryParams   *url.Values
+	Headers       *map[string]string
 }
 
 // ErrorResponse is returned when a request to the API fails
@@ -76,7 +76,7 @@ type ErrorResponse struct {
 
 // All List methods takes a ListOptions object controlling pagination
 type ListOptions struct {
-	Page int
+	Page    int
 	PerPage int
 }
 
@@ -105,7 +105,6 @@ func NewClient(config *Config) *Client {
 		client.BaseUrl, _ = url.Parse(defaultBaseURL)
 	}
 
-
 	if config.HttpClient != nil {
 		client.client = config.HttpClient
 	} else if config.AccessToken != "" {
@@ -133,7 +132,7 @@ func (c *Client) newRequest(method, apiPath string, options *RequestOptions) (*h
 	}
 
 	urlPath := path.Join("api", apiVersion, apiPath)
-	if options!= nil && options.QueryParams != nil && len(*options.QueryParams) > 0 {
+	if options != nil && options.QueryParams != nil && len(*options.QueryParams) > 0 {
 		urlPath = urlPath + "?" + options.QueryParams.Encode()
 	}
 	rel, err := url.Parse(urlPath)
