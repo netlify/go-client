@@ -1,10 +1,8 @@
 package commands
 
 import (
-	"fmt"
-	"github.com/bitballoon/bitballoon-go/bitballoon"
+	"log"
 	"github.com/spf13/cobra"
-	"os"
 	"path/filepath"
 )
 
@@ -19,10 +17,7 @@ func init() {
 }
 
 func deploy(cmd *cobra.Command, args []string) {
-	if AccessToken == "" {
-		fmt.Println("No API access token, get one at https://www.bitballoon.com/applications and use the --token option")
-		return
-	}
+	client := newClient()
 
 	var dir string
 	if len(args) > 0 {
@@ -32,41 +27,28 @@ func deploy(cmd *cobra.Command, args []string) {
 	}
 	path, err := filepath.Abs(dir)
 	if err != nil {
-		fmt.Println("Bad directory path")
-		return
+		log.Fatalln("Bad directory path")
 	}
 
 	// Deploy
-	fmt.Println("Deploying site: %v - dir: %v", SiteId, path)
+	log.Printf("Deploying site: %v - dir: %v", SiteId, path)
 
-	config := &bitballoon.Config{AccessToken: AccessToken}
-
-	endpoint := os.Getenv("BB_API_ENDPOINT")
-
-	if endpoint != "" {
-		config.BaseUrl = endpoint
-	}
-
-	client := bitballoon.NewClient(config)
 	site, _, err := client.Sites.Get(SiteId)
 
 	if err != nil {
-		fmt.Println("Error during deploy: %v", err)
-		return
+		log.Fatalf("Error during deploy: %v", err)
 	}
 
 	deploy, _, err := site.Deploys.Create(path)
 
 	if err != nil {
-		fmt.Println("Deploy failed with error: ", err)
-		return
+		log.Fatalf("Deploy failed with error: ", err)
 	}
 
 	err = deploy.WaitForReady(0)
 	if err != nil {
-		fmt.Println("Error dring site processing: ", err)
-		return
+		log.Fatalf("Error dring site processing: ", err)
 	}
 
-	fmt.Println("Site deployed to", site.Url)
+	log.Println("Site deployed to", site.Url)
 }

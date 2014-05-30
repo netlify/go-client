@@ -18,7 +18,11 @@ type Deploy struct {
   SiteId string `json:"site_id"`
   UserId string `json:"user_id"`
 
+  // State of the deploy (uploading/uploaded/processing/ready/error)
   State   string `json:"state"`
+
+  // Cause of error if State is "error"
+  ErrorMessage string `json:"error_message"`
 
   // Shas of files that needs to be uploaded before the deploy is ready
   Required []string `json:"required"`
@@ -29,11 +33,11 @@ type Deploy struct {
   CreatedAt Timestamp `json:"created_at"`
   UpdatedAt Timestamp `json:"updated_at"`
 
-
   client *Client
 }
 
-type DeployService struct {
+// DeploysService is used to access all Deploy related API methods
+type DeploysService struct {
   site   *Site
   client *Client
 }
@@ -42,7 +46,7 @@ type deployFiles struct {
   Files  *map[string]string `json:"files"`
 }
 
-func (s *DeployService) apiPath() string {
+func (s *DeploysService) apiPath() string {
   if s.site != nil {
     return path.Join(s.site.apiPath(), "deploys")
   } else {
@@ -50,7 +54,10 @@ func (s *DeployService) apiPath() string {
   }
 }
 
-func (s *DeployService) Create(dirOrZip string) (*Deploy, *Response, error) {
+// Create a new deploy
+//
+// Example: site.Deploys.Create("/path/to/site-dir")
+func (s *DeploysService) Create(dirOrZip string) (*Deploy, *Response, error) {
   if s.site == nil {
     return nil, nil, errors.New("You can only create a new deploy for an existing site (site.Deploys.Create(dirOrZip)))")
   }
@@ -62,7 +69,9 @@ func (s *DeployService) Create(dirOrZip string) (*Deploy, *Response, error) {
   }
 }
 
-func (s *DeployService) List(options *ListOptions) ([]Deploy, *Response, error) {
+
+// List all deploys. Takes ListOptions to control pagination.
+func (s *DeploysService) List(options *ListOptions) ([]Deploy, *Response, error) {
   deploys := new([]Deploy)
 
   reqOptions := &RequestOptions{QueryParams: options.toQueryParamsMap()}
@@ -76,9 +85,10 @@ func (s *DeployService) List(options *ListOptions) ([]Deploy, *Response, error) 
   return *deploys, resp, err
 }
 
-func (d *DeployService) Get(id string) (*Deploy, *Response, error) {
+// Get a specific deploy.
+func (d *DeploysService) Get(id string) (*Deploy, *Response, error) {
   deploy := &Deploy{Id: id, client: d.client}
-  resp, err := deploy.refresh()
+  resp, err := deploy.Reload()
 
   return deploy, resp, err
 }
@@ -87,14 +97,20 @@ func (deploy *Deploy) apiPath() string {
   return path.Join("/deploys", deploy.Id)
 }
 
-func (deploy *Deploy) refresh() (*Response, error) {
+// Reload a deploy from the API
+func (deploy *Deploy) Reload() (*Response, error) {
   if deploy.Id == "" {
     return nil, errors.New("Cannot fetch deploy without an ID")
   }
   return deploy.client.Request("GET", deploy.apiPath(), nil, deploy)
 }
 
-func (s *DeployService) deployDir(dir string) (*Deploy, *Response, error) {
+// Restore an old deploy. Sets the deploy as the active deploy for a site
+func (deploy *Deploy) Restore() (*Response, error) {
+  return deploy.client.Request("POST", path.Join(deploy.apiPath(), "restore"), nil, deploy)
+}
+
+func (s *DeploysService) deployDir(dir string) (*Deploy, *Response, error) {
   files := map[string]string{}
 
   err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
@@ -161,7 +177,7 @@ func (s *DeployService) deployDir(dir string) (*Deploy, *Response, error) {
   return deploy, resp, err
 }
 
-func (s *DeployService) deployZip(zip string) (*Deploy, *Response, error) {
+func (s *DeploysService) deployZip(zip string) (*Deploy, *Response, error) {
   zipPath, err := filepath.Abs(zip)
   if err != nil {
     return nil, nil, err
@@ -207,7 +223,7 @@ func (deploy *Deploy) WaitForReady(timeout time.Duration) error {
         break
       }
 
-      _, err := deploy.refresh()
+      _, err := deploy.Reload()
       if err != nil || (deploy.State == "ready") {
         done <- err
         break

@@ -37,7 +37,7 @@ func TestDeploysService_List_For_Site(t *testing.T) {
   })
 
   site := &Site{Id: "first-site", client: client}
-  site.Deploys = &DeployService{client: client, site: site}
+  site.Deploys = &DeploysService{client: client, site: site}
 
   deploys, _, err := site.Deploys.List(&ListOptions{})
   if err != nil {
@@ -50,7 +50,7 @@ func TestDeploysService_List_For_Site(t *testing.T) {
   }
 }
 
-func TestDeployService_Get(t *testing.T) {
+func TestDeploysService_Get(t *testing.T) {
   setup()
   defer teardown()
 

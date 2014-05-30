@@ -44,7 +44,7 @@ type Client struct {
 	UserAgent string
 
 	Sites   *SitesService
-	Deploys *DeployService
+	Deploys *DeploysService
 }
 
 // BitBalloon API Response.
@@ -121,7 +121,7 @@ func NewClient(config *Config) *Client {
 	}
 
 	client.Sites = &SitesService{client: client}
-	client.Deploys = &DeployService{client: client}
+	client.Deploys = &DeploysService{client: client}
 
 	return client
 }
@@ -223,6 +223,11 @@ func checkResponse(r *http.Response) error {
 		return nil
 	}
 	errorResponse := &ErrorResponse{Response: r}
+	if r.StatusCode == 403 || r.StatusCode == 401 {
+		errorResponse.Message = "Access Denied"
+		return errorResponse
+	}
+
 	data, err := ioutil.ReadAll(r.Body)
 	if err == nil && data != nil {
 		errorResponse.Message = string(data)

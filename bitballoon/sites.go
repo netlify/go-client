@@ -1,18 +1,8 @@
 package bitballoon
 
 import (
-	"bytes"
-	"crypto/sha1"
-	"encoding/hex"
 	"errors"
-	"io"
-	"io/ioutil"
-	"fmt"
-	"mime/multipart"
-	"os"
 	"path"
-	"path/filepath"
-	"strings"
 	"time"
 )
 
@@ -49,7 +39,7 @@ type Site struct {
 	UpdatedAt Timestamp `json:"updated_at"`
 
 	// Access deploys for this site
-	Deploys *DeployService
+	Deploys *DeploysService
 
 	client *Client
 }
@@ -61,20 +51,31 @@ type DeployInfo struct {
 	Required []string `json:"required"`
 }
 
-type siteUpdate struct {
+// Attributes for Sites.Create
+type SiteAttributes struct {
 	Name              string             `json:"name"`
 	CustomDomain      string             `json:"custom_domain"`
 	Password          string             `json:"password"`
 	NotificationEmail string             `json:"notification_email"`
-	Files             *map[string]string `json:"files"`
 }
 
 // Get a single Site from the API. The id can be either a site Id or the domain
 // of a site (ie. site.Get("mysite.bitballoon.com"))
 func (s *SitesService) Get(id string) (*Site, *Response, error) {
 	site := &Site{Id: id, client: s.client}
-	site.Deploys = &DeployService{client: s.client, site: site}
-	resp, err := site.refresh()
+	site.Deploys = &DeploysService{client: s.client, site: site}
+	resp, err := site.Reload()
+
+	return site, resp, err
+}
+
+func (s *SitesService) Create(attributes *SiteAttributes) (*Site, *Response, error) {
+	site := &Site{client: s.client}
+	site.Deploys = &DeploysService{client: s.client, site: site}
+
+	reqOptions := &RequestOptions{JsonBody: attributes}
+
+	resp, err := s.client.Request("POST", "/sites", reqOptions, site)
 
 	return site, resp, err
 }
@@ -89,7 +90,7 @@ func (s *SitesService) List(options *ListOptions) ([]Site, *Response, error) {
 
 	for _, site := range(*sites) {
 		site.client = s.client
-		site.Deploys = &DeployService{client: s.client, site: site}
+		site.Deploys = &DeploysService{client: s.client, site: &site}
 	}
 
 	return *sites, resp, err
@@ -99,7 +100,7 @@ func (site *Site) apiPath() string {
 	return path.Join("/sites", site.Id)
 }
 
-func (site *Site) refresh() (*Response, error) {
+func (site *Site) Reload() (*Response, error) {
 	if site.Id == "" {
 		return nil, errors.New("Cannot fetch site without an ID")
 	}
@@ -111,6 +112,11 @@ func (site *Site) Update() (*Response, error) {
 	options := &RequestOptions{JsonBody: site.mutableParams()}
 
 	return site.client.Request("PUT", site.apiPath(), options, site)
+}
+
+// Destroy deletes a site permanently
+func (site *Site) Destroy() (*Response, error) {
+	return site.client.Request("DELETE", site.apiPath(), nil, nil)
 }
 
 func (site *Site) mutableParams() *map[string]string {
