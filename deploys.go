@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+	"net/url"
 )
 
 // Deploy represents a specific deploy of a site
@@ -44,6 +45,7 @@ type DeploysService struct {
 
 type deployFiles struct {
 	Files *map[string]string `json:"files"`
+	Draft bool
 }
 
 func (s *DeploysService) apiPath() string {
@@ -56,16 +58,26 @@ func (s *DeploysService) apiPath() string {
 
 // Create a new deploy
 //
-// Example: site.Deploys.Create("/path/to/site-dir")
+// Example: site.Deploys.Create("/path/to/site-dir", true)
 func (s *DeploysService) Create(dirOrZip string) (*Deploy, *Response, error) {
+	return s.create(dirOrZip, false)
+}
+
+// Create a new draft deploy. Draft deploys will be uploaded and processed, but
+// won't affect the active deploy for a site.
+func (s *DeploysService) CreateDraft(dirOrZip string) (*Deploy, *Response, error) {
+	return s.create(dirOrZip, true)
+}
+
+func (s *DeploysService) create(dirOrZip string, draft bool) (*Deploy, *Response, error) {
 	if s.site == nil {
 		return nil, nil, errors.New("You can only create a new deploy for an existing site (site.Deploys.Create(dirOrZip)))")
 	}
 
 	if strings.HasSuffix(dirOrZip, ".zip") {
-		return s.deployZip(dirOrZip)
+		return s.deployZip(dirOrZip, draft)
 	} else {
-		return s.deployDir(dirOrZip)
+		return s.deployDir(dirOrZip, draft)
 	}
 }
 
@@ -109,7 +121,12 @@ func (deploy *Deploy) Restore() (*Response, error) {
 	return deploy.client.Request("POST", path.Join(deploy.apiPath(), "restore"), nil, deploy)
 }
 
-func (s *DeploysService) deployDir(dir string) (*Deploy, *Response, error) {
+// Alias for restore. Published a specific deploy.
+func (deploy *Deploy) Publish() (*Response, error) {
+	return deploy.Restore()
+}
+
+func (s *DeploysService) deployDir(dir string, draft bool) (*Deploy, *Response, error) {
 	files := map[string]string{}
 
 	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
@@ -141,6 +158,7 @@ func (s *DeploysService) deployDir(dir string) (*Deploy, *Response, error) {
 	options := &RequestOptions{
 		JsonBody: &deployFiles{
 			Files: &files,
+			Draft: draft,
 		},
 	}
 
@@ -187,7 +205,7 @@ func (s *DeploysService) deployDir(dir string) (*Deploy, *Response, error) {
 	return deploy, resp, err
 }
 
-func (s *DeploysService) deployZip(zip string) (*Deploy, *Response, error) {
+func (s *DeploysService) deployZip(zip string, draft bool) (*Deploy, *Response, error) {
 	zipPath, err := filepath.Abs(zip)
 	if err != nil {
 		return nil, nil, err
@@ -206,10 +224,16 @@ func (s *DeploysService) deployZip(zip string) (*Deploy, *Response, error) {
 		return nil, nil, err
 	}
 
+	params := url.Values{}
+	if draft {
+		params["draft"] = []string{"true"}
+	}
+
 	options := &RequestOptions{
 		RawBody:       zipFile,
 		RawBodyLength: info.Size(),
 		Headers:       &map[string]string{"Content-Type": "application/zip"},
+		QueryParams:   &params,
 	}
 
 	deploy := &Deploy{client: s.client}
