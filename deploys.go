@@ -29,6 +29,7 @@ type Deploy struct {
 	Required []string `json:"required"`
 
 	DeployUrl     string `json:"deploy_url"`
+	SiteUrl			 string `json:"url"`
 	ScreenshotUrl string `json:"screenshot_url"`
 
 	CreatedAt Timestamp `json:"created_at"`
