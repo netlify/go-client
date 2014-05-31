@@ -136,7 +136,7 @@ func (s *DeploysService) deployDir(dir string, draft bool) (*Deploy, *Response, 
 				return err
 			}
 
-			if strings.HasPrefix(rel, ".") || strings.Contains(rel, "/.") {
+			if strings.HasPrefix(rel, ".") || strings.Contains(rel, "/.") || strings.HasPrefix(rel, "__MACOS"){
 				return nil
 			}
 
