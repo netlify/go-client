@@ -5,12 +5,12 @@ import (
 	"encoding/hex"
 	"errors"
 	"io/ioutil"
+	"net/url"
 	"os"
 	"path"
 	"path/filepath"
 	"strings"
 	"time"
-	"net/url"
 )
 
 // Deploy represents a specific deploy of a site
@@ -29,7 +29,7 @@ type Deploy struct {
 	Required []string `json:"required"`
 
 	DeployUrl     string `json:"deploy_url"`
-	SiteUrl			 string `json:"url"`
+	SiteUrl       string `json:"url"`
 	ScreenshotUrl string `json:"screenshot_url"`
 
 	CreatedAt Timestamp `json:"created_at"`
@@ -131,13 +131,16 @@ func (s *DeploysService) deployDir(dir string, draft bool) (*Deploy, *Response, 
 	files := map[string]string{}
 
 	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
 		if info.IsDir() == false {
 			rel, err := filepath.Rel(dir, path)
 			if err != nil {
 				return err
 			}
 
-			if strings.HasPrefix(rel, ".") || strings.Contains(rel, "/.") || strings.HasPrefix(rel, "__MACOS"){
+			if strings.HasPrefix(rel, ".") || strings.Contains(rel, "/.") || strings.HasPrefix(rel, "__MACOS") {
 				return nil
 			}
 
@@ -197,6 +200,9 @@ func (s *DeploysService) deployDir(dir string, draft bool) (*Deploy, *Response, 
 				Headers:       &map[string]string{"Content-Type": "application/octet-stream"},
 			}
 			resp, err = s.client.Request("PUT", filepath.Join(deploy.apiPath(), "files", path), options, nil)
+			if resp != nil && resp.Body != nil {
+				resp.Body.Close()
+			}
 			if err != nil {
 				return deploy, resp, err
 			}

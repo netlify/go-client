@@ -117,7 +117,11 @@ func (site *Site) Update() (*Response, error) {
 
 // Destroy deletes a site permanently
 func (site *Site) Destroy() (*Response, error) {
-	return site.client.Request("DELETE", site.apiPath(), nil, nil)
+	resp, err := site.client.Request("DELETE", site.apiPath(), nil, nil)
+	if resp != nil && resp.Body != nil {
+		resp.Body.Close()
+	}
+	return resp, err
 }
 
 func (site *Site) mutableParams() *map[string]string {
