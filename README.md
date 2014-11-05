@@ -1,15 +1,15 @@
 # BitBallon API Client in Go
 
-See [the bitballoon package on godoc](http://godoc.org/github.com/BitBalloon/bitballoon-go) for full library documentation.
+See [the netlify package on godoc](http://godoc.org/github.com/BitBalloon/netlify-go) for full library documentation.
 
 ## Quick Start
 
-First `go get github.com/BitBalloon/bitballoon-go` then use in your go project.
+First `go get github.com/BitBalloon/netlify-go` then use in your go project.
 
 ```go
-import "github.com/BitBalloon/bitballoon-go"
+import "github.com/BitBalloon/netlify-go"
 
-client := bitballoon.NewClient(&bitballoon.Config{AccessToken: AccessToken})
+client := netlify.NewClient(&netlify.Config{AccessToken: AccessToken})
 
 // Create a new site
 site, resp, err := client.Sites.Create(&SiteAttributes{

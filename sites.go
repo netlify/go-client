@@ -1,4 +1,4 @@
-package bitballoon
+package netlify
 
 import (
 	"errors"
@@ -60,7 +60,7 @@ type SiteAttributes struct {
 }
 
 // Get a single Site from the API. The id can be either a site Id or the domain
-// of a site (ie. site.Get("mysite.bitballoon.com"))
+// of a site (ie. site.Get("mysite.netlify.com"))
 func (s *SitesService) Get(id string) (*Site, *Response, error) {
 	site := &Site{Id: id, client: s.client}
 	site.Deploys = &DeploysService{client: s.client, site: site}

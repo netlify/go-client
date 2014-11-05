@@ -1,4 +1,4 @@
-package bitballoon
+package netlify
 
 import (
 	"bytes"
@@ -16,10 +16,10 @@ import (
 
 const (
 	libraryVersion = "0.1"
-	defaultBaseURL = "https://www.bitballoon.com"
+	defaultBaseURL = "https://www.netlify.com"
 	apiVersion     = "v1"
 
-	userAgent = "bitballoon-go/" + libraryVersion
+	userAgent = "netlify-go/" + libraryVersion
 )
 
 // Config is used to configure the BitBalloon client.

@@ -1,4 +1,4 @@
-package bitballoon
+package netlify
 
 import (
 	"crypto/sha1"

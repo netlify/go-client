@@ -1,4 +1,4 @@
-package bitballoon
+package netlify
 
 import (
 	"net/http"
@@ -48,10 +48,10 @@ func testFormValues(t *testing.T, r *http.Request, values values) {
 func TestResponse_populatePageValues(t *testing.T) {
 	r := http.Response{
 		Header: http.Header{
-			"Link": {`<https://www.bitballoon.com/sites?page=1>; rel="first",` +
-				` <https://www.bitballoon.com/sites?page=2>; rel="prev",` +
-				` <https://www.bitballoon.com/sites?page=4>; rel="next",` +
-				` <https://www.bitballoon.com/sites?page=5>; rel="last"`,
+			"Link": {`<https://www.netlify.com/sites?page=1>; rel="first",` +
+				` <https://www.netlify.com/sites?page=2>; rel="prev",` +
+				` <https://www.netlify.com/sites?page=4>; rel="next",` +
+				` <https://www.netlify.com/sites?page=5>; rel="last"`,
 			},
 		},
 	}

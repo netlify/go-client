@@ -1,12 +1,12 @@
 /*
-Package bitballoon provides a client for using the BitBalloon API.
+Package netlify provides a client for using the BitBalloon API.
 
 To work with the BitBalloon API, start by instantiating a client:
 
-    client := bitballoon.NewClient(&bitballoon.Config{AccessToken: AccessToken})
+    client := netlify.NewClient(&netlify.Config{AccessToken: AccessToken})
 
     // List sites
-    sites, resp, err := client.Sites.List(&bitballoon.ListOptions{Page: 1})
+    sites, resp, err := client.Sites.List(&netlify.ListOptions{Page: 1})
 
     // Create a new site
     site, resp, err := client.Sites.Create(&SiteAttributes{
@@ -38,4 +38,4 @@ To work with the BitBalloon API, start by instantiating a client:
     // Delete the site
     resp, err := site.Destroy()
 */
-package bitballoon
+package netlify
