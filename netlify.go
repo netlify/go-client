@@ -16,7 +16,7 @@ import (
 
 const (
 	libraryVersion = "0.1"
-	defaultBaseURL = "https://www.netlify.com"
+	defaultBaseURL = "https://www.bitballoon.com"
 	apiVersion     = "v1"
 
 	userAgent = "netlify-go/" + libraryVersion
