@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"net/url"
 	"os"
+	"log"
 	"path"
 	"path/filepath"
 	"strings"
@@ -46,7 +47,6 @@ type DeploysService struct {
 
 type deployFiles struct {
 	Files *map[string]string `json:"files"`
-	Draft bool
 }
 
 func (s *DeploysService) apiPath() string {
@@ -75,11 +75,20 @@ func (s *DeploysService) create(dirOrZip string, draft bool) (*Deploy, *Response
 		return nil, nil, errors.New("You can only create a new deploy for an existing site (site.Deploys.Create(dirOrZip)))")
 	}
 
-	if strings.HasSuffix(dirOrZip, ".zip") {
-		return s.deployZip(dirOrZip, draft)
-	} else {
-		return s.deployDir(dirOrZip, draft)
+	params := url.Values{}
+	if draft {
+		params["draft"] = []string{"true"}
 	}
+	options := &RequestOptions{QueryParams: &params}
+	deploy := &Deploy{client: s.client}
+	resp, err := s.client.Request("POST", s.apiPath(), options, deploy)
+
+	if err != nil {
+		return deploy, resp, err
+	}
+
+	resp, err = deploy.Deploy(dirOrZip)
+	return deploy, resp, err
 }
 
 // List all deploys. Takes ListOptions to control pagination.
@@ -109,6 +118,15 @@ func (deploy *Deploy) apiPath() string {
 	return path.Join("/deploys", deploy.Id)
 }
 
+func (deploy *Deploy) Deploy(dirOrZip string) (*Response, error) {
+	if strings.HasSuffix(dirOrZip, ".zip") {
+		return deploy.deployZip(dirOrZip)
+	} else {
+		return deploy.deployDir(dirOrZip)
+	}
+}
+
+
 // Reload a deploy from the API
 func (deploy *Deploy) Reload() (*Response, error) {
 	if deploy.Id == "" {
@@ -127,7 +145,7 @@ func (deploy *Deploy) Publish() (*Response, error) {
 	return deploy.Restore()
 }
 
-func (s *DeploysService) deployDir(dir string, draft bool) (*Deploy, *Response, error) {
+func (deploy *Deploy) deployDir(dir string) (*Response, error) {
 	files := map[string]string{}
 
 	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
@@ -162,15 +180,13 @@ func (s *DeploysService) deployDir(dir string, draft bool) (*Deploy, *Response, 
 	options := &RequestOptions{
 		JsonBody: &deployFiles{
 			Files: &files,
-			Draft: draft,
 		},
 	}
 
-	deploy := &Deploy{client: s.client}
-	resp, err := s.client.Request("POST", s.apiPath(), options, deploy)
+	resp, err := deploy.client.Request("PUT", deploy.apiPath(), options, deploy)
 
 	if err != nil {
-		return deploy, resp, err
+		return resp, err
 	}
 
 	lookup := map[string]bool{}
@@ -185,13 +201,13 @@ func (s *DeploysService) deployDir(dir string, draft bool) (*Deploy, *Response, 
 			defer file.Close()
 
 			if err != nil {
-				return deploy, nil, err
+				return nil, err
 			}
 
 			info, err := file.Stat()
 
 			if err != nil {
-				return deploy, nil, err
+				return nil, err
 			}
 
 			options = &RequestOptions{
@@ -199,54 +215,51 @@ func (s *DeploysService) deployDir(dir string, draft bool) (*Deploy, *Response, 
 				RawBodyLength: info.Size(),
 				Headers:       &map[string]string{"Content-Type": "application/octet-stream"},
 			}
-			resp, err = s.client.Request("PUT", filepath.Join(deploy.apiPath(), "files", path), options, nil)
+			resp, err = deploy.client.Request("PUT", filepath.Join(deploy.apiPath(), "files", path), options, nil)
+			if err != nil {
+				log.Printf("Error during file upload: %v", err)
+				return resp, err
+			}
 			if resp != nil && resp.Body != nil {
 				resp.Body.Close()
 			}
 			if err != nil {
-				return deploy, resp, err
+				return resp, err
 			}
 		}
 	}
 
-	return deploy, resp, err
+	return resp, err
 }
 
-func (s *DeploysService) deployZip(zip string, draft bool) (*Deploy, *Response, error) {
+func (deploy *Deploy) deployZip(zip string) (*Response, error) {
 	zipPath, err := filepath.Abs(zip)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	zipFile, err := os.Open(zipPath)
 	defer zipFile.Close()
 
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	info, err := zipFile.Stat()
 
 	if err != nil {
-		return nil, nil, err
-	}
-
-	params := url.Values{}
-	if draft {
-		params["draft"] = []string{"true"}
+		return nil, err
 	}
 
 	options := &RequestOptions{
 		RawBody:       zipFile,
 		RawBodyLength: info.Size(),
 		Headers:       &map[string]string{"Content-Type": "application/zip"},
-		QueryParams:   &params,
 	}
 
-	deploy := &Deploy{client: s.client}
-	resp, err := s.client.Request("POST", s.apiPath(), options, deploy)
+	resp, err := deploy.client.Request("PUT", deploy.apiPath(), options, deploy)
 
-	return deploy, resp, err
+	return resp, err
 }
 
 func (deploy *Deploy) WaitForReady(timeout time.Duration) error {

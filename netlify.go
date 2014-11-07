@@ -163,6 +163,8 @@ func (c *Client) newRequest(method, apiPath string, options *RequestOptions) (*h
 		return nil, err
 	}
 
+	req.Close = true
+
 	req.TransferEncoding = []string{"identity"}
 
 	req.Header.Add("Accept", "application/json")

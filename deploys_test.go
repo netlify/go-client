@@ -77,14 +77,27 @@ func TestDeploysService_Create(t *testing.T) {
 
 	mux.HandleFunc("/api/v1/sites/my-site/deploys", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "POST")
+
+		r.ParseForm()
+		if _,ok := r.Form["draft"]; ok {
+			t.Errorf("Draft should not be a query parameter for a normal deploy")
+		}
+
+		fmt.Fprint(w, `{"id":"my-deploy"})`)
+	})
+
+	mux.HandleFunc("/api/v1/deploys/my-deploy", func(w http.ResponseWriter, r *http.Request) {
+		testMethod(t, r, "PUT")
+
 		buf := new(bytes.Buffer)
 		buf.ReadFrom(r.Body)
 
-		expected := `{"files":{"index.html":"3c7d0500e11e9eb9954ad3d9c2a1bd8b0fa06d88","style.css":"7b797fc1c66448cd8685c5914a571763e8a213da"},"Draft":false}`
+		expected := `{"files":{"index.html":"3c7d0500e11e9eb9954ad3d9c2a1bd8b0fa06d88","style.css":"7b797fc1c66448cd8685c5914a571763e8a213da"}}`
 		if expected != strings.TrimSpace(buf.String()) {
 			t.Errorf("Expected JSON: %v\nGot JSON: %v", expected, buf.String())
 		}
-		fmt.Fprint(w, `{"id":"my-deploy"})`)
+
+		fmt.Fprint(w, `{"id":"my-deploy"}`)
 	})
 
 	site := &Site{Id: "my-site"}
@@ -106,14 +119,34 @@ func TestDeploysService_CreateDraft(t *testing.T) {
 
 	mux.HandleFunc("/api/v1/sites/my-site/deploys", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "POST")
+
+		r.ParseForm()
+
+		value := r.Form["draft"]
+		if len(value) == 0 {
+			t.Errorf("No draft query parameter, should be specified")
+			return
+		}
+
+		draft := value[0]
+		if draft != "true" {
+			t.Errorf("Draft should be true but was %v", r.Form["draft"])
+			return
+		}
+
+		fmt.Fprint(w, `{"id":"my-deploy"})`)
+	})
+
+	mux.HandleFunc("/api/v1/deploys/my-deploy", func(w http.ResponseWriter, r *http.Request) {
 		buf := new(bytes.Buffer)
 		buf.ReadFrom(r.Body)
 
-		expected := `{"files":{"index.html":"3c7d0500e11e9eb9954ad3d9c2a1bd8b0fa06d88","style.css":"7b797fc1c66448cd8685c5914a571763e8a213da"},"Draft":true}`
+		expected := `{"files":{"index.html":"3c7d0500e11e9eb9954ad3d9c2a1bd8b0fa06d88","style.css":"7b797fc1c66448cd8685c5914a571763e8a213da"}}`
 		if expected != strings.TrimSpace(buf.String()) {
 			t.Errorf("Expected JSON: %v\nGot JSON: %v", expected, buf.String())
 		}
-		fmt.Fprint(w, `{"id":"my-deploy"})`)
+
+		fmt.Fprint(w, `{"id":"my-deploy"}`)
 	})
 
 	site := &Site{Id: "my-site"}
@@ -139,10 +172,19 @@ func TestDeploysService_Create_Zip(t *testing.T) {
 		if _,ok := r.Form["draft"]; ok {
 			t.Errorf("Draft should not be a query parameter for a normal deploy")
 		}
+
+		fmt.Fprint(w, `{"id":"my-deploy"})`)
+	})
+
+	mux.HandleFunc("/api/v1/deploys/my-deploy", func(w http.ResponseWriter, r *http.Request) {
+		testMethod(t, r, "PUT")
+
 		if r.Header["Content-Type"][0] != "application/zip" {
 			t.Errorf("Deploying a zip should set the content type to application/zip")
+			return
 		}
-		fmt.Fprint(w, `{"id":"my-deploy"})`)
+
+		fmt.Fprint(w, `{"id":"my-deploy"}`)
 	})
 
 	site := &Site{Id: "my-site"}
@@ -169,10 +211,18 @@ func TestDeploysService_CreateDraft_Zip(t *testing.T) {
 		if val,ok := r.Form["draft"]; ok == false || val[0] != "true" {
 			t.Errorf("Draft should be a true parameter for a draft deploy")
 		}
+		fmt.Fprint(w, `{"id":"my-deploy"})`)
+	})
+
+	mux.HandleFunc("/api/v1/deploys/my-deploy", func(w http.ResponseWriter, r *http.Request) {
+		testMethod(t, r, "PUT")
+
 		if r.Header["Content-Type"][0] != "application/zip" {
 			t.Errorf("Deploying a zip should set the content type to application/zip")
+			return
 		}
-		fmt.Fprint(w, `{"id":"my-deploy"})`)
+
+		fmt.Fprint(w, `{"id":"my-deploy"}`)
 	})
 
 	site := &Site{Id: "my-site"}
@@ -180,7 +230,7 @@ func TestDeploysService_CreateDraft_Zip(t *testing.T) {
 	deploy, _, err := deploys.CreateDraft("test-site/archive.zip")
 
 	if err != nil {
-		t.Errorf("Deploys.Create returned and error: %v", err)
+		t.Errorf("Deploys.Create returned an error: %v", err)
 	}
 
 	if deploy.Id != "my-deploy" {
