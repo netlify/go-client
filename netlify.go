@@ -2,7 +2,6 @@ package netlify
 
 import (
 	"bytes"
-	"code.google.com/p/goauth2/oauth"
 	"encoding/json"
 	"errors"
 	"io"
@@ -12,6 +11,8 @@ import (
 	"path"
 	"strconv"
 	"strings"
+
+	"code.google.com/p/goauth2/oauth"
 )
 
 const (
@@ -189,12 +190,17 @@ func (c *Client) newRequest(method, apiPath string, options *RequestOptions) (*h
 //
 // Generally methods on the various services should be used over raw API requests
 func (c *Client) Request(method, path string, options *RequestOptions, decodeTo interface{}) (*Response, error) {
+	var httpResponse *http.Response
 	req, err := c.newRequest(method, path, options)
 	if err != nil {
 		return nil, err
 	}
 
-	httpResponse, err := c.client.Do(req)
+	if c.idempotent(req) {
+		httpResponse, err = c.doWithRetry(req, 3)
+	} else {
+		httpResponse, err = c.client.Do(req)
+	}
 
 	resp := newResponse(httpResponse)
 
@@ -215,6 +221,41 @@ func (c *Client) Request(method, path string, options *RequestOptions, decodeTo 
 		}
 	}
 	return resp, err
+}
+
+func (c *Client) idempotent(req *http.Request) bool {
+	switch req.Method {
+	case "GET", "PUT", "DELETE":
+		return true
+	default:
+		return false
+	}
+}
+
+func (c *Client) rewindRequestBody(req *http.Request) error {
+	if req.Body == nil {
+		return nil
+	}
+	body, ok := req.Body.(io.Seeker)
+	if ok {
+		_, err := body.Seek(0, 0)
+		return err
+	}
+	return errors.New("Body is not a seeker")
+}
+
+func (c *Client) doWithRetry(req *http.Request, tries int) (*http.Response, error) {
+	httpResponse, err := c.client.Do(req)
+
+	tries--
+
+	if tries > 0 && (err != nil || httpResponse.StatusCode >= 400) {
+		if err := c.rewindRequestBody(req); err != nil {
+			return c.doWithRetry(req, tries)
+		}
+	}
+
+	return httpResponse, err
 }
 
 func newResponse(r *http.Response) *Response {
