@@ -21,6 +21,8 @@ const (
 	apiVersion     = "v1"
 
 	userAgent = "netlify-go/" + libraryVersion
+
+	DefaultMaxConcurrentUploads = 50
 )
 
 // Config is used to configure the BitBalloon client.
@@ -35,6 +37,8 @@ type Config struct {
 	UserAgent string
 
 	HttpClient *http.Client
+
+	MaxConcurrentUploads int
 }
 
 // The BitBalloon Client
@@ -46,6 +50,8 @@ type Client struct {
 
 	Sites   *SitesService
 	Deploys *DeploysService
+
+	MaxConcurrentUploads int
 }
 
 // BitBalloon API Response.
@@ -119,6 +125,12 @@ func NewClient(config *Config) *Client {
 		client.UserAgent = config.UserAgent
 	} else {
 		client.UserAgent = userAgent
+	}
+
+	if config.MaxConcurrentUploads != 0 {
+		client.MaxConcurrentUploads = config.MaxConcurrentUploads
+	} else {
+		client.MaxConcurrentUploads = DefaultMaxConcurrentUploads
 	}
 
 	client.Sites = &SitesService{client: client}

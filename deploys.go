@@ -5,13 +5,15 @@ import (
 	"encoding/hex"
 	"errors"
 	"io/ioutil"
+	"log"
 	"net/url"
 	"os"
-	"log"
 	"path"
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/cenkalti/backoff"
 )
 
 // Deploy represents a specific deploy of a site
@@ -126,7 +128,6 @@ func (deploy *Deploy) Deploy(dirOrZip string) (*Response, error) {
 	}
 }
 
-
 // Reload a deploy from the API
 func (deploy *Deploy) Reload() (*Response, error) {
 	if deploy.Id == "" {
@@ -143,6 +144,42 @@ func (deploy *Deploy) Restore() (*Response, error) {
 // Alias for restore. Published a specific deploy.
 func (deploy *Deploy) Publish() (*Response, error) {
 	return deploy.Restore()
+}
+
+func (deploy *Deploy) uploadFile(dir, path string) error {
+	log.Printf("Uploading file: %v", path)
+	file, err := os.Open(filepath.Join(dir, path))
+	defer file.Close()
+
+	if err != nil {
+		return err
+	}
+
+	info, err := file.Stat()
+
+	if err != nil {
+		return err
+	}
+
+	options := &RequestOptions{
+		RawBody:       file,
+		RawBodyLength: info.Size(),
+		Headers:       &map[string]string{"Content-Type": "application/octet-stream"},
+	}
+
+	resp, err := deploy.client.Request("PUT", filepath.Join(deploy.apiPath(), "files", path), options, nil)
+	if err != nil {
+		log.Printf("Error during file upload: %v", err)
+		return err
+	}
+	if resp != nil && resp.Body != nil {
+		resp.Body.Close()
+	}
+	if err != nil {
+		return err
+	}
+
+	return err
 }
 
 func (deploy *Deploy) deployDir(dir string) (*Response, error) {
@@ -195,37 +232,17 @@ func (deploy *Deploy) deployDir(dir string) (*Response, error) {
 		lookup[sha] = true
 	}
 
+	// Use a channel as a semaphore to limit # of parallel uploads
+	sem := make(chan int, deploy.client.MaxConcurrentUploads)
+
+	err = nil
 	for path, sha := range files {
-		if lookup[sha] == true {
-			file, err := os.Open(filepath.Join(dir, path))
-			defer file.Close()
-
-			if err != nil {
-				return nil, err
-			}
-
-			info, err := file.Stat()
-
-			if err != nil {
-				return nil, err
-			}
-
-			options = &RequestOptions{
-				RawBody:       file,
-				RawBodyLength: info.Size(),
-				Headers:       &map[string]string{"Content-Type": "application/octet-stream"},
-			}
-			resp, err = deploy.client.Request("PUT", filepath.Join(deploy.apiPath(), "files", path), options, nil)
-			if err != nil {
-				log.Printf("Error during file upload: %v", err)
-				return resp, err
-			}
-			if resp != nil && resp.Body != nil {
-				resp.Body.Close()
-			}
-			if err != nil {
-				return resp, err
-			}
+		if lookup[sha] == true && err == nil {
+			sem <- 1
+			go func(path string) {
+				err = backoff.Retry(func() error { return deploy.uploadFile(dir, path) }, backoff.NewExponentialBackOff())
+				<-sem
+			}(path)
 		}
 	}
 
