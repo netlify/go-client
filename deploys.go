@@ -11,6 +11,7 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/cenkalti/backoff"
@@ -45,6 +46,11 @@ type Deploy struct {
 type DeploysService struct {
 	site   *Site
 	client *Client
+}
+
+type uploadError struct {
+	err   error
+	mutex *sync.Mutex
 }
 
 type deployFiles struct {
@@ -146,18 +152,27 @@ func (deploy *Deploy) Publish() (*Response, error) {
 	return deploy.Restore()
 }
 
-func (deploy *Deploy) uploadFile(dir, path string) error {
+func (deploy *Deploy) uploadFile(dir, path string, sharedError uploadError) error {
+	sharedError.mutex.Lock()
+	if sharedError.err != nil {
+		sharedError.mutex.Unlock()
+		return errors.New("Canceled because upload has already failed")
+	}
+	sharedError.mutex.Unlock()
+
 	log.Printf("Uploading file: %v", path)
 	file, err := os.Open(filepath.Join(dir, path))
 	defer file.Close()
 
 	if err != nil {
+		log.Printf("Error opening file %v: %v", path, err)
 		return err
 	}
 
 	info, err := file.Stat()
 
 	if err != nil {
+		log.Printf("Error getting file size %v: %v", path, err)
 		return err
 	}
 
@@ -167,15 +182,14 @@ func (deploy *Deploy) uploadFile(dir, path string) error {
 		Headers:       &map[string]string{"Content-Type": "application/octet-stream"},
 	}
 
-	resp, err := deploy.client.Request("PUT", filepath.Join(deploy.apiPath(), "files", path), options, nil)
-	if err != nil {
-		log.Printf("Error during file upload: %v", err)
-		return err
-	}
-	if resp != nil && resp.Body != nil {
+	fileUrl, _ := url.Parse(path)
+
+	resp, err := deploy.client.Request("PUT", filepath.Join(deploy.apiPath(), "files", fileUrl.Path), options, nil)
+	if resp != nil && resp.Response != nil && resp.Body != nil {
 		resp.Body.Close()
 	}
 	if err != nil {
+		log.Printf("Error while uploading %v: %v", path, err)
 		return err
 	}
 
@@ -235,12 +249,27 @@ func (deploy *Deploy) deployDir(dir string) (*Response, error) {
 	// Use a channel as a semaphore to limit # of parallel uploads
 	sem := make(chan int, deploy.client.MaxConcurrentUploads)
 
-	err = nil
+	sharedErr := uploadError{err: nil, mutex: &sync.Mutex{}}
 	for path, sha := range files {
 		if lookup[sha] == true && err == nil {
 			sem <- 1
 			go func(path string) {
-				err = backoff.Retry(func() error { return deploy.uploadFile(dir, path) }, backoff.NewExponentialBackOff())
+				sharedErr.mutex.Lock()
+				if sharedErr.err != nil {
+					sharedErr.mutex.Unlock()
+					return
+				}
+				sharedErr.mutex.Unlock()
+
+				b := backoff.NewExponentialBackOff()
+				b.MaxElapsedTime = 2 * time.Minute
+				err := backoff.Retry(func() error { return deploy.uploadFile(dir, path, sharedErr) }, b)
+				if err != nil {
+					sharedErr.mutex.Lock()
+					sharedErr.err = err
+					sharedErr.mutex.Unlock()
+					return
+				}
 				<-sem
 			}(path)
 		}

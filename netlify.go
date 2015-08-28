@@ -22,7 +22,7 @@ const (
 
 	userAgent = "netlify-go/" + libraryVersion
 
-	DefaultMaxConcurrentUploads = 50
+	DefaultMaxConcurrentUploads = 10
 )
 
 // Config is used to configure the BitBalloon client.
@@ -208,7 +208,7 @@ func (c *Client) Request(method, path string, options *RequestOptions, decodeTo 
 		return nil, err
 	}
 
-	if c.idempotent(req) {
+	if c.idempotent(req) && (options == nil || options.RawBody == nil) {
 		httpResponse, err = c.doWithRetry(req, 3)
 	} else {
 		httpResponse, err = c.client.Do(req)
