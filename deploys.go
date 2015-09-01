@@ -248,15 +248,18 @@ func (deploy *Deploy) deployDir(dir string) (*Response, error) {
 
 	// Use a channel as a semaphore to limit # of parallel uploads
 	sem := make(chan int, deploy.client.MaxConcurrentUploads)
+	var wg sync.WaitGroup
 
 	sharedErr := uploadError{err: nil, mutex: &sync.Mutex{}}
 	for path, sha := range files {
 		if lookup[sha] == true && err == nil {
 			sem <- 1
 			go func(path string) {
+				wg.Add(1)
 				sharedErr.mutex.Lock()
 				if sharedErr.err != nil {
 					sharedErr.mutex.Unlock()
+					wg.Done()
 					return
 				}
 				sharedErr.mutex.Unlock()
@@ -268,11 +271,19 @@ func (deploy *Deploy) deployDir(dir string) (*Response, error) {
 					sharedErr.mutex.Lock()
 					sharedErr.err = err
 					sharedErr.mutex.Unlock()
+					wg.Done()
 					return
 				}
+				wg.Done()
 				<-sem
 			}(path)
 		}
+	}
+
+	wg.Wait()
+
+	if sharedErr.err != nil {
+		return resp, sharedErr.err
 	}
 
 	return resp, err
