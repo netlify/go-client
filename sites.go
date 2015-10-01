@@ -15,7 +15,7 @@ type SitesService struct {
 	client *Client
 }
 
-// Site represents a BitBalloon Site
+// Site represents a netlify Site
 type Site struct {
 	Id     string `json:"id"`
 	UserId string `json:"user_id"`

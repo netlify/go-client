@@ -1,7 +1,7 @@
 /*
-Package netlify provides a client for using the BitBalloon API.
+Package netlify provides a client for using the netlify API.
 
-To work with the BitBalloon API, start by instantiating a client:
+To work with the netlify API, start by instantiating a client:
 
     client := netlify.NewClient(&netlify.Config{AccessToken: AccessToken})
 

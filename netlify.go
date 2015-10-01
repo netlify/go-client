@@ -17,7 +17,7 @@ import (
 
 const (
 	libraryVersion = "0.1"
-	defaultBaseURL = "https://www.bitballoon.com"
+	defaultBaseURL = "https://api.netlify.com"
 	apiVersion     = "v1"
 
 	userAgent = "netlify-go/" + libraryVersion
@@ -25,7 +25,7 @@ const (
 	DefaultMaxConcurrentUploads = 10
 )
 
-// Config is used to configure the BitBalloon client.
+// Config is used to configure the netlify client.
 // Typically you'll just want to set an AccessToken
 type Config struct {
 	AccessToken string
@@ -41,7 +41,7 @@ type Config struct {
 	MaxConcurrentUploads int
 }
 
-// The BitBalloon Client
+// The netlify Client
 type Client struct {
 	client *http.Client
 
@@ -54,7 +54,7 @@ type Client struct {
 	MaxConcurrentUploads int
 }
 
-// BitBalloon API Response.
+// netlify API Response.
 // All API methods on the different client services will return a Response object.
 // For any list operation this object will hold pagination information
 type Response struct {
@@ -66,7 +66,7 @@ type Response struct {
 	LastPage  int
 }
 
-// RequestOptions for doing raw requests to the BitBalloon API
+// RequestOptions for doing raw requests to the netlify API
 type RequestOptions struct {
 	JsonBody      interface{}
 	RawBody       io.Reader
@@ -102,7 +102,7 @@ func (r *ErrorResponse) Error() string {
 	return r.Message
 }
 
-// NewClient returns a new BitBalloon API client
+// NewClient returns a new netlify API client
 func NewClient(config *Config) *Client {
 	client := &Client{}
 
@@ -196,7 +196,7 @@ func (c *Client) newRequest(method, apiPath string, options *RequestOptions) (*h
 	return req, nil
 }
 
-// Request sends an authenticated HTTP request to the BitBalloon API
+// Request sends an authenticated HTTP request to the netlify API
 //
 // When error is nil, resp always contains a non-nil Response object
 //
