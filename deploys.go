@@ -254,8 +254,8 @@ func (deploy *Deploy) deployDir(dir string) (*Response, error) {
 	for path, sha := range files {
 		if lookup[sha] == true && err == nil {
 			sem <- 1
+			wg.Add(1)
 			go func(path string) {
-				wg.Add(1)
 				sharedErr.mutex.Lock()
 				if sharedErr.err != nil {
 					sharedErr.mutex.Unlock()
