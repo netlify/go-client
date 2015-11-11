@@ -17,6 +17,9 @@ import (
 	"github.com/cenkalti/backoff"
 )
 
+const MaxFilesForSyncDeploy = 7000
+const PreProcessingTimeout = time.Minute * 5
+
 // Deploy represents a specific deploy of a site
 type Deploy struct {
 	Id     string `json:"id"`
@@ -55,6 +58,7 @@ type uploadError struct {
 
 type deployFiles struct {
 	Files *map[string]string `json:"files"`
+	Async bool               `json:"async"`
 }
 
 func (s *DeploysService) apiPath() string {
@@ -182,7 +186,11 @@ func (deploy *Deploy) uploadFile(dir, path string, sharedError uploadError) erro
 		Headers:       &map[string]string{"Content-Type": "application/octet-stream"},
 	}
 
-	fileUrl, _ := url.Parse(path)
+	fileUrl, err := url.Parse(path)
+	if err != nil {
+		log.Printf("Error parsing url %v: %v", path, err)
+		return err
+	}
 
 	resp, err := deploy.client.Request("PUT", filepath.Join(deploy.apiPath(), "files", fileUrl.Path), options, nil)
 	if resp != nil && resp.Response != nil && resp.Body != nil {
@@ -203,7 +211,7 @@ func (deploy *Deploy) deployDir(dir string) (*Response, error) {
 		if err != nil {
 			return err
 		}
-		if info.IsDir() == false {
+		if info.IsDir() == false && info.Mode().IsRegular() {
 			rel, err := filepath.Rel(dir, path)
 			if err != nil {
 				return err
@@ -228,16 +236,49 @@ func (deploy *Deploy) deployDir(dir string) (*Response, error) {
 		return nil
 	})
 
+	if err != nil {
+		return nil, err
+	}
+
+	fileOptions := &deployFiles{
+		Files: &files,
+	}
+
+	if len(files) > MaxFilesForSyncDeploy {
+		fileOptions.Async = true
+	}
+
 	options := &RequestOptions{
-		JsonBody: &deployFiles{
-			Files: &files,
-		},
+		JsonBody: fileOptions,
 	}
 
 	resp, err := deploy.client.Request("PUT", deploy.apiPath(), options, deploy)
 
 	if err != nil {
 		return resp, err
+	}
+
+	if len(files) > MaxFilesForSyncDeploy {
+		start := time.Now()
+		for {
+			resp, err := deploy.client.Request("GET", deploy.apiPath(), nil, deploy)
+			if err != nil {
+				log.Printf("Error fetching deploy: %v", err)
+				time.Sleep(5 * time.Second)
+			}
+			resp.Body.Close()
+			log.Printf("Deploy state: %v\n", deploy.State)
+			if deploy.State == "prepared" {
+				break
+			}
+			if deploy.State == "error" {
+				return resp, errors.New("Error: preprocessing deploy failed")
+			}
+			if start.Add(PreProcessingTimeout).Before(time.Now()) {
+				return resp, errors.New("Error: preprocessing deploy timed out")
+			}
+			time.Sleep(2 * time.Second)
+		}
 	}
 
 	lookup := map[string]bool{}
@@ -259,6 +300,7 @@ func (deploy *Deploy) deployDir(dir string) (*Response, error) {
 				sharedErr.mutex.Lock()
 				if sharedErr.err != nil {
 					sharedErr.mutex.Unlock()
+					<-sem
 					wg.Done()
 					return
 				}
@@ -271,6 +313,7 @@ func (deploy *Deploy) deployDir(dir string) (*Response, error) {
 					sharedErr.mutex.Lock()
 					sharedErr.err = err
 					sharedErr.mutex.Unlock()
+					<-sem
 					wg.Done()
 					return
 				}
