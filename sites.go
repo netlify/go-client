@@ -45,9 +45,6 @@ type Site struct {
 	ProcessingSettings *ProcessingSettings `json:"processing_settings"`
 
 	DeployHook string `json:"deploy_hook"`
-	// attributes :id, :site_id, :state, :plan, :ssl_plan, :premium, :claimed, :name, :custom_domain, :domain_aliases, :password, :notification_email,
-	//            :url, :admin_url, :deploy_id, :build_id, :deploy_url, :state, :screenshot_url, :created_at, :updated_at, :user_id, :error_message,
-	//            :ssl, :force_ssl, :ssl_status, :max_domain_aliases, :build_settings, :processing_settings, :prerender, :prerender_headers, :deploy_hook
 
 	CreatedAt Timestamp `json:"created_at"`
 	UpdatedAt Timestamp `json:"updated_at"`

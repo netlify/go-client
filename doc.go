@@ -35,7 +35,30 @@ To work with the netlify API, start by instantiating a client:
     deploy, resp, err := site.Deploys.Create("/path/to/file.zip")
     deploy.WaitForReady(0)
 
-    // Delete the site
+    // Configure Continuous Deployment for a site
+
+    // First get a deploy key
+    deployKey, resp, err := site.DeployKeys.Create()
+    // Then make sure the public key (deployKey.PublicKey)
+    // has access to the repository
+
+    // Configure the repo
+    resp, err = site.ContinuousDeployment(&nefliy.RepoOptions{
+      Repo: "netlify/netlify-home",
+      Provider: "github",
+      Dir: "_site",
+      Cmd: "gulp build",
+      Branch: "master",
+      DeployKeyId: deployKey.Id
+    })
+    if err != nil {
+      // Now make sure to add this URL as a POST webhook to your
+      // repository:
+      site.DeployHook
+    }
+
+
+    // Deleting a site
     resp, err := site.Destroy()
 */
 package netlify
