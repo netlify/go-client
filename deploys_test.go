@@ -92,7 +92,7 @@ func TestDeploysService_Create(t *testing.T) {
 		buf := new(bytes.Buffer)
 		buf.ReadFrom(r.Body)
 
-		expected := `{"files":{"index.html":"3c7d0500e11e9eb9954ad3d9c2a1bd8b0fa06d88","style.css":"7b797fc1c66448cd8685c5914a571763e8a213da"}}`
+		expected := `{"files":{"index.html":"3c7d0500e11e9eb9954ad3d9c2a1bd8b0fa06d88","style.css":"7b797fc1c66448cd8685c5914a571763e8a213da"},"async":false}`
 		if expected != strings.TrimSpace(buf.String()) {
 			t.Errorf("Expected JSON: %v\nGot JSON: %v", expected, buf.String())
 		}
@@ -141,7 +141,7 @@ func TestDeploysService_CreateDraft(t *testing.T) {
 		buf := new(bytes.Buffer)
 		buf.ReadFrom(r.Body)
 
-		expected := `{"files":{"index.html":"3c7d0500e11e9eb9954ad3d9c2a1bd8b0fa06d88","style.css":"7b797fc1c66448cd8685c5914a571763e8a213da"}}`
+		expected := `{"files":{"index.html":"3c7d0500e11e9eb9954ad3d9c2a1bd8b0fa06d88","style.css":"7b797fc1c66448cd8685c5914a571763e8a213da"},"async":false}`
 		if expected != strings.TrimSpace(buf.String()) {
 			t.Errorf("Expected JSON: %v\nGot JSON: %v", expected, buf.String())
 		}

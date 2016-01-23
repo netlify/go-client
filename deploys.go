@@ -268,7 +268,7 @@ func (deploy *Deploy) deployDir(dir string) (*Response, error) {
 			}
 			resp.Body.Close()
 			log.Printf("Deploy state: %v\n", deploy.State)
-			if deploy.State == "prepared" {
+			if deploy.State == "prepared" || deploy.State == "ready" {
 				break
 			}
 			if deploy.State == "error" {
