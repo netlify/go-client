@@ -48,8 +48,9 @@ type Client struct {
 	BaseUrl   *url.URL
 	UserAgent string
 
-	Sites   *SitesService
-	Deploys *DeploysService
+	Sites      *SitesService
+	Deploys    *DeploysService
+	DeployKeys *DeployKeysService
 
 	MaxConcurrentUploads int
 }
