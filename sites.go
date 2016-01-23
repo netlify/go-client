@@ -59,6 +59,14 @@ type SiteAttributes struct {
 	NotificationEmail string `json:"notification_email"`
 }
 
+// Attributes for site.ProvisionCert
+type CertOptions struct {
+	Certificate string `json:"certificate"`
+	Key string `json:"key"`
+	CaCertificates []string `json:"ca_certificates"`
+}
+
+
 // Get a single Site from the API. The id can be either a site Id or the domain
 // of a site (ie. site.Get("mysite.netlify.com"))
 func (s *SitesService) Get(id string) (*Site, *Response, error) {
@@ -114,6 +122,15 @@ func (site *Site) Update() (*Response, error) {
 
 	return site.client.Request("PUT", site.apiPath(), options, site)
 }
+
+// Provision SSL Certificate for a site. Takes optional CertOptions to set a custom cert/chain/key.
+// Without this netlify will generate the certificate automatically.
+func (site *Site) ProvisionCert(certOptions *CertOptions) (*Response, error) {
+	options := &RequestOptions{JsonBody: certOptions}
+
+	return site.client.Request("POST", site.apiPath() + "/ssl", options, nil)
+}
+
 
 // Destroy deletes a site permanently
 func (site *Site) Destroy() (*Response, error) {
