@@ -72,6 +72,7 @@ func (s *DeploysService) apiPath() string {
 // Create a new deploy
 //
 // Example: site.Deploys.Create("/path/to/site-dir", true)
+// If the target is a zip file, it must have the extension .zip
 func (s *DeploysService) Create(dirOrZip string) (*Deploy, *Response, error) {
 	return s.create(dirOrZip, false)
 }
