@@ -70,3 +70,24 @@ func TestResponse_populatePageValues(t *testing.T) {
 		t.Errorf("response.LastPage: %v, expected %v", got, expected)
 	}
 }
+
+func TestListOptionsToQueryParams(t *testing.T) {
+	cases := []struct {
+		o *ListOptions
+		e string
+	}{
+		{nil, ""},
+		{&ListOptions{}, ""},
+		{&ListOptions{Page: 0, PerPage: 0}, ""},
+		{&ListOptions{Page: 0, PerPage: 1}, "per_page=1"},
+		{&ListOptions{Page: 1, PerPage: 0}, "page=1"},
+		{&ListOptions{Page: 1, PerPage: 1}, "page=1&per_page=1"},
+	}
+
+	for _, cs := range cases {
+		g := cs.o.toQueryParamsMap()
+		if g.Encode() != cs.e {
+			t.Errorf("expected %s, got %s\n", cs.e, g.Encode())
+		}
+	}
+}
