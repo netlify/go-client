@@ -90,11 +90,13 @@ type ListOptions struct {
 
 func (o *ListOptions) toQueryParamsMap() *url.Values {
 	params := url.Values{}
-	if o.Page > 0 {
-		params["page"] = []string{strconv.Itoa(o.Page)}
-	}
-	if o.PerPage > 0 {
-		params["per_page"] = []string{strconv.Itoa(o.PerPage)}
+	if o != nil {
+		if o.Page > 0 {
+			params.Set("page", strconv.Itoa(o.Page))
+		}
+		if o.PerPage > 0 {
+			params.Set("per_page", strconv.Itoa(o.PerPage))
+		}
 	}
 	return &params
 }
