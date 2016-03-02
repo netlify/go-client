@@ -12,7 +12,7 @@ import (
 	"strconv"
 	"strings"
 
-	"code.google.com/p/goauth2/oauth"
+	oauth "golang.org/x/oauth2"
 )
 
 const (
@@ -39,6 +39,10 @@ type Config struct {
 	HttpClient *http.Client
 
 	MaxConcurrentUploads int
+}
+
+func (c *Config) Token() (*oauth.Token, error) {
+	return &oauth.Token{AccessToken: c.AccessToken}, nil
 }
 
 // The netlify Client
@@ -118,10 +122,7 @@ func NewClient(config *Config) *Client {
 	if config.HttpClient != nil {
 		client.client = config.HttpClient
 	} else if config.AccessToken != "" {
-		t := &oauth.Transport{
-			Token: &oauth.Token{AccessToken: config.AccessToken},
-		}
-		client.client = t.Client()
+		client.client = oauth.NewClient(oauth.NoContext, config)
 	}
 
 	if &config.UserAgent != nil {
