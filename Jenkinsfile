@@ -13,11 +13,6 @@ node {
       err = e
     }
 
-  stage "Deploy"
-    if (!err) {
-      sh "release.sh ${project}"
-    }
-
   stage "Notify"
     def message = "succeeded"
     def color = "good"
