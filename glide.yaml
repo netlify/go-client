@@ -1,0 +1,4 @@
+package: github.com/netlify/netlify-go
+import:
+- package: github.com/cenkalti/backoff
+- package: golang.org/x/oauth2

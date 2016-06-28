@@ -1,0 +1,28 @@
+hash: 38ed1bba7fd57cade148a119117ebf01db5fa66f834e033c490cc1b5e77362dc
+updated: 2016-06-28T14:33:22.402741954-07:00
+imports:
+- name: github.com/cenkalti/backoff
+  version: cdf48bbc1eb78d1349cbda326a4a037f7ba565c6
+- name: github.com/golang/protobuf
+  version: 78b168c14fc28c8c711844d210f7ab845083e3b1
+  subpackages:
+  - proto
+- name: golang.org/x/net
+  version: 04557861f124410b768b1ba5bb3a91b705afbfc6
+  subpackages:
+  - context
+- name: golang.org/x/oauth2
+  version: 65a8d08c6292395d47053be10b3c5e91960def76
+  subpackages:
+  - internal
+- name: google.golang.org/appengine
+  version: 267c27e7492265b84fc6719503b14a1e17975d79
+  subpackages:
+  - urlfetch
+  - internal
+  - internal/urlfetch
+  - internal/base
+  - internal/datastore
+  - internal/log
+  - internal/remote_api
+devImports: []
