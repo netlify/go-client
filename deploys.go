@@ -17,7 +17,7 @@ import (
 	"github.com/cenkalti/backoff"
 )
 
-const MaxFilesForSyncDeploy = 7000
+const MaxFilesForSyncDeploy = 1000
 const PreProcessingTimeout = time.Minute * 5
 
 // Deploy represents a specific deploy of a site
