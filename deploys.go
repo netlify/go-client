@@ -42,6 +42,9 @@ type Deploy struct {
 	CreatedAt Timestamp `json:"created_at"`
 	UpdatedAt Timestamp `json:"updated_at"`
 
+	Branch    string `json:"branch"`
+	CommitRef string `json:"commit_ref"`
+
 	client *Client
 }
 
@@ -57,8 +60,10 @@ type uploadError struct {
 }
 
 type deployFiles struct {
-	Files *map[string]string `json:"files"`
-	Async bool               `json:"async"`
+	Files     *map[string]string `json:"files"`
+	Async     bool               `json:"async"`
+	Branch    string             `json:"branch"`
+	CommitRef string             `json:"commit_ref"`
 }
 
 func (s *DeploysService) apiPath() string {
@@ -205,7 +210,18 @@ func (deploy *Deploy) uploadFile(dir, path string, sharedError uploadError) erro
 	return err
 }
 
+// deployDir scans the given directory and deploys the files
+// that have changed on Netlify.
 func (deploy *Deploy) deployDir(dir string) (*Response, error) {
+	return deploy.DeployDirWithGitInfo(dir, "", "")
+}
+
+// DeployDirWithGitInfo scans the given directory and deploys the files
+// that have changed on Netlify.
+//
+// This function allows you to supply git information about the deploy
+// when it hasn't been set previously be a Continuous Deployment process.
+func (deploy *Deploy) DeployDirWithGitInfo(dir, branch, commitRef string) (*Response, error) {
 	files := map[string]string{}
 
 	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
@@ -242,7 +258,9 @@ func (deploy *Deploy) deployDir(dir string) (*Response, error) {
 	}
 
 	fileOptions := &deployFiles{
-		Files: &files,
+		Files:     &files,
+		Branch:    branch,
+		CommitRef: commitRef,
 	}
 
 	if len(files) > MaxFilesForSyncDeploy {
@@ -333,6 +351,8 @@ func (deploy *Deploy) deployDir(dir string) (*Response, error) {
 	return resp, err
 }
 
+// deployZip uploads a Zip file to Netlify and deploys the files
+// that have changed.
 func (deploy *Deploy) deployZip(zip string) (*Response, error) {
 	zipPath, err := filepath.Abs(zip)
 	if err != nil {
