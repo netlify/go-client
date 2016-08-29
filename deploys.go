@@ -330,7 +330,9 @@ func (deploy *Deploy) DeployDirWithGitInfo(dir, branch, commitRef string) (*Resp
 				err := backoff.Retry(func() error { return deploy.uploadFile(dir, path, sharedErr) }, b)
 				if err != nil {
 					sharedErr.mutex.Lock()
-					sharedErr.err = err
+					if sharedErr.err == nil {
+						sharedErr.err = err
+					}
 					sharedErr.mutex.Unlock()
 					<-sem
 					wg.Done()
