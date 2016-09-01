@@ -11,6 +11,7 @@ import (
 	"path"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/Sirupsen/logrus"
 
@@ -38,7 +39,8 @@ type Config struct {
 	BaseUrl   string
 	UserAgent string
 
-	HttpClient *http.Client
+	HttpClient     *http.Client
+	RequestTimeout time.Duration
 
 	MaxConcurrentUploads int
 }
@@ -126,6 +128,9 @@ func NewClient(config *Config) *Client {
 		client.client = config.HttpClient
 	} else if config.AccessToken != "" {
 		client.client = oauth.NewClient(oauth.NoContext, config)
+		if config.RequestTimeout > 0 {
+			client.client.Timeout = config.RequestTimeout
+		}
 	}
 
 	if &config.UserAgent != nil {
