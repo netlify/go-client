@@ -52,7 +52,7 @@ func (c *Config) Token() (*oauth.Token, error) {
 // The netlify Client
 type Client struct {
 	client *http.Client
-	log    *logrus.Logger
+	log    *logrus.Entry
 
 	BaseUrl   *url.URL
 	UserAgent string
@@ -146,7 +146,8 @@ func NewClient(config *Config) *Client {
 	}
 
 	logrus.SetOutput(ioutil.Discard)
-	client.log = logrus.StandardLogger()
+	client.log = logrus.NewEntry(logrus.StandardLogger())
+
 	client.Sites = &SitesService{client: client}
 	client.Deploys = &DeploysService{client: client}
 
@@ -159,9 +160,9 @@ func NewClient(config *Config) *Client {
 	return client
 }
 
-func (c *Client) SetLogger(log *logrus.Logger) {
+func (c *Client) SetLogger(log *logrus.Entry) {
 	if log != nil {
-		c.log = logrus.StandardLogger()
+		c.log = logrus.NewEntry(logrus.StandardLogger())
 	}
 	c.log = log
 }
