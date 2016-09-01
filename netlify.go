@@ -91,6 +91,10 @@ type ErrorResponse struct {
 	Message  string
 }
 
+func (r *ErrorResponse) Error() string {
+	return r.Message
+}
+
 // All List methods takes a ListOptions object controlling pagination
 type ListOptions struct {
 	Page    int
@@ -108,10 +112,6 @@ func (o *ListOptions) toQueryParamsMap() *url.Values {
 		}
 	}
 	return &params
-}
-
-func (r *ErrorResponse) Error() string {
-	return r.Message
 }
 
 // NewClient returns a new netlify API client

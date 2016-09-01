@@ -73,6 +73,22 @@ type uploadError struct {
 	mutex *sync.Mutex
 }
 
+func (u *uploadError) Set(err error) {
+	if err != nil {
+		u.mutex.Lock()
+		defer u.mutex.Unlock()
+		if u.err != nil {
+			u.err = err
+		}
+	}
+}
+
+func (u *uploadError) Get() error {
+	u.mutex.Lock()
+	defer u.mutex.Unlock()
+	return err
+}
+
 type deployFiles struct {
 	Files     *map[string]string `json:"files"`
 	Async     bool               `json:"async"`
@@ -177,12 +193,10 @@ func (deploy *Deploy) Publish() (*Response, error) {
 }
 
 func (deploy *Deploy) uploadFile(dir, path string, sharedError uploadError) error {
-	sharedError.mutex.Lock()
-	if sharedError.err != nil {
-		sharedError.mutex.Unlock()
+	if sharedError.Get() != nil {
 		return errors.New("Canceled because upload has already failed")
 	}
-	sharedError.mutex.Unlock()
+
 	log := deploy.log().WithFields(logrus.Fields{
 		"dir":  dir,
 		"path": path,
@@ -347,33 +361,23 @@ func (deploy *Deploy) DeployDirWithGitInfo(dir, branch, commitRef string) (*Resp
 	for path, sha := range files {
 		if lookup[sha] == true && err == nil {
 			sem <- 1
-			wg.Add(1)
 			go func(path string) {
-				log.Debugf("Starting to upload %s/%s", path, sha)
-				sharedErr.mutex.Lock()
-				if sharedErr.err != nil {
-					sharedErr.mutex.Unlock()
+				wg.Add(1)
+				defer func() {
 					<-sem
 					wg.Done()
+				}()
+				log.Debugf("Starting to upload %s/%s", path, sha)
+				if sharedErr.Get() != nil {
 					return
 				}
-				sharedErr.mutex.Unlock()
 
 				b := backoff.NewExponentialBackOff()
 				b.MaxElapsedTime = 2 * time.Minute
 				err := backoff.Retry(func() error { return deploy.uploadFile(dir, path, sharedErr) }, b)
 				if err != nil {
-					sharedErr.mutex.Lock()
-					if sharedErr.err == nil {
-						sharedErr.err = err
-					}
-					sharedErr.mutex.Unlock()
-					<-sem
-					wg.Done()
-					return
+					sharedErr.Set(err)
 				}
-				wg.Done()
-				<-sem
 			}(path)
 		}
 	}
@@ -381,7 +385,7 @@ func (deploy *Deploy) DeployDirWithGitInfo(dir, branch, commitRef string) (*Resp
 	log.Debugf("Waiting for required files to upload")
 	wg.Wait()
 
-	if sharedErr.err != nil {
+	if sharedErr.Get() != nil {
 		return resp, sharedErr.err
 	}
 
