@@ -1,28 +1,34 @@
-hash: 38ed1bba7fd57cade148a119117ebf01db5fa66f834e033c490cc1b5e77362dc
-updated: 2016-06-28T14:33:22.402741954-07:00
+hash: d326f49a14f016e4a588de5d3fda573468d983e8c541e66286499c7855134435
+updated: 2016-08-31T21:33:07.707202933-07:00
 imports:
 - name: github.com/cenkalti/backoff
   version: cdf48bbc1eb78d1349cbda326a4a037f7ba565c6
 - name: github.com/golang/protobuf
-  version: 78b168c14fc28c8c711844d210f7ab845083e3b1
+  version: 1f49d83d9aa00e6ce4fc8258c71cc7786aec968a
   subpackages:
   - proto
+- name: github.com/Sirupsen/logrus
+  version: 4b6ea7319e214d98c938f12692336f7ca9348d6b
 - name: golang.org/x/net
-  version: 04557861f124410b768b1ba5bb3a91b705afbfc6
+  version: 9bc2a3340c92c17a20edcd0080e93851ed58f5d5
   subpackages:
   - context
 - name: golang.org/x/oauth2
-  version: 65a8d08c6292395d47053be10b3c5e91960def76
+  version: 4d549c893be7d4011bab739cc585d091a7188d27
   subpackages:
   - internal
+- name: golang.org/x/sys
+  version: a646d33e2ee3172a661fc09bca23bb4889a41bc8
+  subpackages:
+  - unix
 - name: google.golang.org/appengine
-  version: 267c27e7492265b84fc6719503b14a1e17975d79
+  version: 4f7eeb5305a4ba1966344836ba4af9996b7b4e05
   subpackages:
-  - urlfetch
   - internal
-  - internal/urlfetch
   - internal/base
   - internal/datastore
   - internal/log
   - internal/remote_api
-devImports: []
+  - internal/urlfetch
+  - urlfetch
+testImports: []

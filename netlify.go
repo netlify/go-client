@@ -11,6 +11,9 @@ import (
 	"path"
 	"strconv"
 	"strings"
+	"time"
+
+	"github.com/Sirupsen/logrus"
 
 	oauth "golang.org/x/oauth2"
 )
@@ -36,7 +39,8 @@ type Config struct {
 	BaseUrl   string
 	UserAgent string
 
-	HttpClient *http.Client
+	HttpClient     *http.Client
+	RequestTimeout time.Duration
 
 	MaxConcurrentUploads int
 }
@@ -48,6 +52,7 @@ func (c *Config) Token() (*oauth.Token, error) {
 // The netlify Client
 type Client struct {
 	client *http.Client
+	log    *logrus.Entry
 
 	BaseUrl   *url.URL
 	UserAgent string
@@ -86,6 +91,10 @@ type ErrorResponse struct {
 	Message  string
 }
 
+func (r *ErrorResponse) Error() string {
+	return r.Message
+}
+
 // All List methods takes a ListOptions object controlling pagination
 type ListOptions struct {
 	Page    int
@@ -105,10 +114,6 @@ func (o *ListOptions) toQueryParamsMap() *url.Values {
 	return &params
 }
 
-func (r *ErrorResponse) Error() string {
-	return r.Message
-}
-
 // NewClient returns a new netlify API client
 func NewClient(config *Config) *Client {
 	client := &Client{}
@@ -123,6 +128,9 @@ func NewClient(config *Config) *Client {
 		client.client = config.HttpClient
 	} else if config.AccessToken != "" {
 		client.client = oauth.NewClient(oauth.NoContext, config)
+		if config.RequestTimeout > 0 {
+			client.client.Timeout = config.RequestTimeout
+		}
 	}
 
 	if &config.UserAgent != nil {
@@ -137,10 +145,26 @@ func NewClient(config *Config) *Client {
 		client.MaxConcurrentUploads = DefaultMaxConcurrentUploads
 	}
 
+	logrus.SetOutput(ioutil.Discard)
+	client.log = logrus.NewEntry(logrus.StandardLogger())
+
 	client.Sites = &SitesService{client: client}
 	client.Deploys = &DeploysService{client: client}
 
+	client.log.WithFields(logrus.Fields{
+		"base_url":               client.BaseUrl.String(),
+		"user_agent":             client.UserAgent,
+		"max_concurrent_uploads": client.MaxConcurrentUploads,
+	}).Debug("created client")
+
 	return client
+}
+
+func (c *Client) SetLogger(log *logrus.Entry) {
+	if log != nil {
+		c.log = logrus.NewEntry(logrus.StandardLogger())
+	}
+	c.log = log
 }
 
 func (c *Client) newRequest(method, apiPath string, options *RequestOptions) (*http.Request, error) {
