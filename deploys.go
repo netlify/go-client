@@ -42,8 +42,8 @@ type Deploy struct {
 	CreatedAt Timestamp `json:"created_at"`
 	UpdatedAt Timestamp `json:"updated_at"`
 
-	Branch    string `json:"branch"`
-	CommitRef string `json:"commit_ref"`
+	Branch    string `json:"branch,omitempty"`
+	CommitRef string `json:"commit_ref,omitempty"`
 
 	client *Client
 	logger *logrus.Entry
@@ -92,8 +92,8 @@ func (u *uploadError) Get() error {
 type deployFiles struct {
 	Files     *map[string]string `json:"files"`
 	Async     bool               `json:"async"`
-	Branch    string             `json:"branch"`
-	CommitRef string             `json:"commit_ref"`
+	Branch    string             `json:"branch,omitempty"`
+	CommitRef string             `json:"commit_ref,omitempty"`
 }
 
 func (s *DeploysService) apiPath() string {
@@ -111,7 +111,7 @@ func (s *DeploysService) Create(dirOrZip string) (*Deploy, *Response, error) {
 	return s.create(dirOrZip, false)
 }
 
-// Create a new draft deploy. Draft deploys will be uploaded and processed, but
+// CreateDraft a new draft deploy. Draft deploys will be uploaded and processed, but
 // won't affect the active deploy for a site.
 func (s *DeploysService) CreateDraft(dirOrZip string) (*Deploy, *Response, error) {
 	return s.create(dirOrZip, true)
