@@ -86,7 +86,7 @@ func (u *uploadError) Set(err error) {
 func (u *uploadError) Get() error {
 	u.mutex.Lock()
 	defer u.mutex.Unlock()
-	return err
+	return u.err
 }
 
 type deployFiles struct {
