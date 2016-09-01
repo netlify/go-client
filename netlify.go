@@ -12,6 +12,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/Sirupsen/logrus"
+
 	oauth "golang.org/x/oauth2"
 )
 
@@ -38,6 +40,8 @@ type Config struct {
 
 	HttpClient *http.Client
 
+	LogLevel logrus.Level
+
 	MaxConcurrentUploads int
 }
 
@@ -48,6 +52,7 @@ func (c *Config) Token() (*oauth.Token, error) {
 // The netlify Client
 type Client struct {
 	client *http.Client
+	log    *logrus.Entry
 
 	BaseUrl   *url.URL
 	UserAgent string
@@ -137,10 +142,38 @@ func NewClient(config *Config) *Client {
 		client.MaxConcurrentUploads = DefaultMaxConcurrentUploads
 	}
 
+	logrus.SetLevel(config.LogLevel)
+	logrus.SetFormatter(&logrus.TextFormatter{
+		FullTimestamp:    true,
+		DisableTimestamp: false,
+	})
+
+	client.log = logrus.StandardLogger()
 	client.Sites = &SitesService{client: client}
 	client.Deploys = &DeploysService{client: client}
 
+	client.log.WithFields(logrus.Fields{
+		"base_url":               client.BaseUrl.String(),
+		"user_agent":             client.UserAgent,
+		"max_concurrent_uploads": client.MaxConcurrentUploads,
+	}).Debug("created client")
+
 	return client
+}
+
+func (c *Client) SetLogLevel(level uint8) error {
+	lvl, err := logrus.ParseLevel(level)
+	if err != nil {
+		return err
+	}
+	logrus.SetLevel(lvl)
+}
+
+func (c *Client) SetLogger(log *logrus.Entry) {
+	if log != nil {
+		c.log = logrus.StandardLogger()
+	}
+	c.log = log
 }
 
 func (c *Client) newRequest(method, apiPath string, options *RequestOptions) (*http.Request, error) {

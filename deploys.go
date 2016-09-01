@@ -5,7 +5,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"io/ioutil"
-	"log"
 	"net/url"
 	"os"
 	"path"
@@ -14,6 +13,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Sirupsen/logrus"
 	"github.com/cenkalti/backoff"
 )
 
@@ -46,6 +46,20 @@ type Deploy struct {
 	CommitRef string `json:"commit_ref"`
 
 	client *Client
+	logger *logrus.Entry
+}
+
+func (d Deploy) log() *logrus.Entry {
+	if d.logger == nil {
+		d.logger = d.client.log.WithFields(logrus.Fields{
+			"function": "deploy",
+			"id":       d.Id,
+			"site_id":  d.SiteId,
+			"user_id":  d.UserId,
+		})
+	}
+
+	return d.logger.WithField("state", d.State)
 }
 
 // DeploysService is used to access all Deploy related API methods
@@ -169,20 +183,24 @@ func (deploy *Deploy) uploadFile(dir, path string, sharedError uploadError) erro
 		return errors.New("Canceled because upload has already failed")
 	}
 	sharedError.mutex.Unlock()
+	log := deploy.log().WithFields(logrus.Fields{
+		"dir":  dir,
+		"path": path,
+	})
 
-	log.Printf("Uploading file: %v", path)
+	log.Debugf("Uploading file: %v", path)
 	file, err := os.Open(filepath.Join(dir, path))
 	defer file.Close()
 
 	if err != nil {
-		log.Printf("Error opening file %v: %v", path, err)
+		log.Warnf("Error opening file %v: %v", path, err)
 		return err
 	}
 
 	info, err := file.Stat()
 
 	if err != nil {
-		log.Printf("Error getting file size %v: %v", path, err)
+		log.Warnf("Error getting file size %v: %v", path, err)
 		return err
 	}
 
@@ -194,7 +212,7 @@ func (deploy *Deploy) uploadFile(dir, path string, sharedError uploadError) erro
 
 	fileUrl, err := url.Parse(path)
 	if err != nil {
-		log.Printf("Error parsing url %v: %v", path, err)
+		log.Warnf("Error parsing url %v: %v", path, err)
 		return err
 	}
 
@@ -203,10 +221,11 @@ func (deploy *Deploy) uploadFile(dir, path string, sharedError uploadError) erro
 		resp.Body.Close()
 	}
 	if err != nil {
-		log.Printf("Error while uploading %v: %v", path, err)
+		log.Warnf("Error while uploading %v: %v", path, err)
 		return err
 	}
 
+	log.Debug("Finished uploading file")
 	return err
 }
 
@@ -223,6 +242,12 @@ func (deploy *Deploy) deployDir(dir string) (*Response, error) {
 // when it hasn't been set previously be a Continuous Deployment process.
 func (deploy *Deploy) DeployDirWithGitInfo(dir, branch, commitRef string) (*Response, error) {
 	files := map[string]string{}
+	log := deploy.log().WithFields(logrus.Fields{
+		"dir":        dir,
+		"branch":     branch,
+		"commit_ref": commitRef,
+	})
+	defer log.Infof("Finished deploying directory %s", dir)
 
 	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -252,8 +277,8 @@ func (deploy *Deploy) DeployDirWithGitInfo(dir, branch, commitRef string) (*Resp
 
 		return nil
 	})
-
 	if err != nil {
+		log.WithError(err).Warn("Failed to walk directory structure")
 		return nil, err
 	}
 
@@ -264,6 +289,7 @@ func (deploy *Deploy) DeployDirWithGitInfo(dir, branch, commitRef string) (*Resp
 	}
 
 	if len(files) > MaxFilesForSyncDeploy {
+		log.Debugf("More files than sync can deploy %d vs %d", len(files), MaxFilesForSyncDeploy)
 		fileOptions.Async = true
 	}
 
@@ -271,31 +297,36 @@ func (deploy *Deploy) DeployDirWithGitInfo(dir, branch, commitRef string) (*Resp
 		JsonBody: fileOptions,
 	}
 
+	log.Debug("Starting to do PUT to origin")
 	resp, err := deploy.client.Request("PUT", deploy.apiPath(), options, deploy)
-
 	if err != nil {
 		return resp, err
 	}
 
 	if len(files) > MaxFilesForSyncDeploy {
 		start := time.Now()
+		log.Debug("Starting to poll for the deploy to get into ready || prepared state")
 		for {
 			resp, err := deploy.client.Request("GET", deploy.apiPath(), nil, deploy)
 			if err != nil {
-				log.Printf("Error fetching deploy: %v", err)
+				log.WithError(err).Warnf("Error fetching deploy, waiting for 5 seconds before retry: %v", err)
 				time.Sleep(5 * time.Second)
 			}
 			resp.Body.Close()
-			log.Printf("Deploy state: %v\n", deploy.State)
+
+			log.Debugf("Deploy state: %v\n", deploy.State)
 			if deploy.State == "prepared" || deploy.State == "ready" {
 				break
 			}
 			if deploy.State == "error" {
+				log.Warnf("deploy is in state error")
 				return resp, errors.New("Error: preprocessing deploy failed")
 			}
 			if start.Add(PreProcessingTimeout).Before(time.Now()) {
+				log.Warnf("Deploy timed out waiting for preprocessing")
 				return resp, errors.New("Error: preprocessing deploy timed out")
 			}
+			log.Debug("Waiting for 2 seconds to retry getting deploy")
 			time.Sleep(2 * time.Second)
 		}
 	}
@@ -305,6 +336,8 @@ func (deploy *Deploy) DeployDirWithGitInfo(dir, branch, commitRef string) (*Resp
 	for _, sha := range deploy.Required {
 		lookup[sha] = true
 	}
+
+	log.Debugf("Going to deploy the %d required files", len(lookup))
 
 	// Use a channel as a semaphore to limit # of parallel uploads
 	sem := make(chan int, deploy.client.MaxConcurrentUploads)
@@ -316,6 +349,7 @@ func (deploy *Deploy) DeployDirWithGitInfo(dir, branch, commitRef string) (*Resp
 			sem <- 1
 			wg.Add(1)
 			go func(path string) {
+				log.Debugf("Starting to upload %s/%s", path, sha)
 				sharedErr.mutex.Lock()
 				if sharedErr.err != nil {
 					sharedErr.mutex.Unlock()
@@ -344,6 +378,7 @@ func (deploy *Deploy) DeployDirWithGitInfo(dir, branch, commitRef string) (*Resp
 		}
 	}
 
+	log.Debugf("Waiting for required files to upload")
 	wg.Wait()
 
 	if sharedErr.err != nil {
@@ -356,17 +391,21 @@ func (deploy *Deploy) DeployDirWithGitInfo(dir, branch, commitRef string) (*Resp
 // deployZip uploads a Zip file to Netlify and deploys the files
 // that have changed.
 func (deploy *Deploy) deployZip(zip string) (*Response, error) {
+	log := deploy.log().WithFields(logrus.Fields{
+		"function": "zip",
+		"zip_path": zip,
+	})
 	zipPath, err := filepath.Abs(zip)
 	if err != nil {
 		return nil, err
 	}
 
+	log.Debugf("Opening zip file at %s", zipPath)
 	zipFile, err := os.Open(zipPath)
-	defer zipFile.Close()
-
 	if err != nil {
 		return nil, err
 	}
+	defer zipFile.Close()
 
 	info, err := zipFile.Stat()
 
@@ -380,8 +419,13 @@ func (deploy *Deploy) deployZip(zip string) (*Response, error) {
 		Headers:       &map[string]string{"Content-Type": "application/zip"},
 	}
 
+	log.Debug("Excuting PUT request for zip file")
 	resp, err := deploy.client.Request("PUT", deploy.apiPath(), options, deploy)
+	if err != nil {
+		log.WithError(err).Warn("Error while uploading zip file")
+	}
 
+	log.Debug("Finished uploading zip file")
 	return resp, err
 }
 
