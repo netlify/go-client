@@ -201,7 +201,7 @@ func (deploy *Deploy) uploadFile(dir, path string, sharedError uploadError) erro
 		"path": path,
 	})
 
-	log.Debugf("Uploading file: %v", path)
+	log.Infof("Uploading file: %v", path)
 	file, err := os.Open(filepath.Join(dir, path))
 	defer file.Close()
 
@@ -238,7 +238,7 @@ func (deploy *Deploy) uploadFile(dir, path string, sharedError uploadError) erro
 		return err
 	}
 
-	log.Debug("Finished uploading file")
+	log.Infof("Finished uploading file: %s", path)
 	return err
 }
 
