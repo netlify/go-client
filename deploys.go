@@ -360,9 +360,9 @@ func (deploy *Deploy) DeployDirWithGitInfo(dir, branch, commitRef string) (*Resp
 	sharedErr := uploadError{err: nil, mutex: &sync.Mutex{}}
 	for path, sha := range files {
 		if lookup[sha] == true && err == nil {
+			wg.Add(1)
 			sem <- 1
 			go func(path string) {
-				wg.Add(1)
 				defer func() {
 					<-sem
 					wg.Done()
