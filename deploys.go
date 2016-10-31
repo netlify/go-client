@@ -77,7 +77,7 @@ func (u *uploadError) Set(err error) {
 	if err != nil {
 		u.mutex.Lock()
 		defer u.mutex.Unlock()
-		if u.err != nil {
+		if u.err == nil {
 			u.err = err
 		}
 	}
@@ -191,7 +191,7 @@ func (deploy *Deploy) Publish() (*Response, error) {
 	return deploy.Restore()
 }
 
-func (deploy *Deploy) uploadFile(dir, path string, sharedError uploadError) error {
+func (deploy *Deploy) uploadFile(dir, path string, sharedError *uploadError) error {
 	if !sharedError.Empty() {
 		return errors.New("Canceled because upload has already failed")
 	}
@@ -359,7 +359,7 @@ func (deploy *Deploy) DeployDirWithGitInfo(dir, branch, commitRef string) (*Resp
 
 	sharedErr := uploadError{err: nil, mutex: &sync.Mutex{}}
 	for path, sha := range files {
-		if lookup[sha] == true && err == nil {
+		if lookup[sha] == true && sharedErr.Empty() {
 			wg.Add(1)
 			sem <- 1
 			go func(path string) {
@@ -374,8 +374,9 @@ func (deploy *Deploy) DeployDirWithGitInfo(dir, branch, commitRef string) (*Resp
 
 				b := backoff.NewExponentialBackOff()
 				b.MaxElapsedTime = 2 * time.Minute
-				err := backoff.Retry(func() error { return deploy.uploadFile(dir, path, sharedErr) }, b)
+				err := backoff.Retry(func() error { return deploy.uploadFile(dir, path, &sharedErr) }, b)
 				if err != nil {
+					log.WithError(err).Warn("Error while uploading file %s: %v", path, err)
 					sharedErr.Set(err)
 				}
 			}(path)
