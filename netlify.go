@@ -145,17 +145,12 @@ func NewClient(config *Config) *Client {
 		client.MaxConcurrentUploads = DefaultMaxConcurrentUploads
 	}
 
-	logrus.SetOutput(ioutil.Discard)
-	client.log = logrus.NewEntry(logrus.StandardLogger())
+	log := logrus.New()
+	log.Out = ioutil.Discard
+	client.log = logrus.NewEntry(log)
 
 	client.Sites = &SitesService{client: client}
 	client.Deploys = &DeploysService{client: client}
-
-	client.log.WithFields(logrus.Fields{
-		"base_url":               client.BaseUrl.String(),
-		"user_agent":             client.UserAgent,
-		"max_concurrent_uploads": client.MaxConcurrentUploads,
-	}).Debug("created client")
 
 	return client
 }
