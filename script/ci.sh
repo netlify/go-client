@@ -9,4 +9,4 @@ docker run \
 	--volume $(pwd):$WORKSPACE \
 	--workdir $WORKSPACE \
 	--rm \
-	calavera/go-glide:0.10.2 script/test.sh $1
+	calavera/go-glide:v0.12.3 script/test.sh $1
