@@ -13,8 +13,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/cenkalti/backoff"
+	"github.com/sirupsen/logrus"
 )
 
 const MaxFilesForSyncDeploy = 1000
