@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 
 	oauth "golang.org/x/oauth2"
 )

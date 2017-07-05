@@ -13,8 +13,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/cenkalti/backoff"
+	"github.com/sirupsen/logrus"
 )
 
 const MaxFilesForSyncDeploy = 1000
@@ -376,7 +376,7 @@ func (deploy *Deploy) DeployDirWithGitInfo(dir, branch, commitRef string) (*Resp
 				b.MaxElapsedTime = 2 * time.Minute
 				err := backoff.Retry(func() error { return deploy.uploadFile(dir, path, &sharedErr) }, b)
 				if err != nil {
-					log.WithError(err).Warn("Error while uploading file %s: %v", path, err)
+					log.WithError(err).Warnf("Error while uploading file %s: %v", path, err)
 					sharedErr.Set(err)
 				}
 			}(path)
