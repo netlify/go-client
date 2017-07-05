@@ -1,6 +1,7 @@
 package: github.com/netlify/netlify-go
 import:
 - package: github.com/cenkalti/backoff
-- package: golang.org/x/oauth2
+  version: v1.0.0
 - package: github.com/sirupsen/logrus
   version: v1.0.0
+- package: golang.org/x/oauth2
