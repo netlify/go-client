@@ -16,7 +16,7 @@ import (
 
 	strfmt "github.com/go-openapi/strfmt"
 
-	models "github.com/netlify/open-api/go/models"
+	models "github.com/netlify/go-client/models"
 )
 
 // NewUpdateSiteSnippetParams creates a new UpdateSiteSnippetParams object

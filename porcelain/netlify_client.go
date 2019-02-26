@@ -4,8 +4,8 @@ import (
 	"github.com/go-openapi/runtime"
 	httptransport "github.com/go-openapi/runtime/client"
 	"github.com/go-openapi/strfmt"
-	"github.com/netlify/open-api/go/plumbing"
-	"github.com/netlify/open-api/go/porcelain/http"
+	"github.com/netlify/go-client/plumbing"
+	"github.com/netlify/go-client/porcelain/http"
 )
 
 const DefaultSyncFileLimit = 7000

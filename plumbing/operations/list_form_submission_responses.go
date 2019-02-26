@@ -13,7 +13,7 @@ import (
 
 	strfmt "github.com/go-openapi/strfmt"
 
-	models "github.com/netlify/open-api/go/models"
+	models "github.com/netlify/go-client/models"
 )
 
 // ListFormSubmissionReader is a Reader for the ListFormSubmission structure.

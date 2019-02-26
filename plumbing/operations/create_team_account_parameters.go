@@ -17,7 +17,7 @@ import (
 
 	strfmt "github.com/go-openapi/strfmt"
 
-	"github.com/netlify/open-api/go/models"
+	"github.com/netlify/go-client/models"
 )
 
 // NewCreateTeamAccountParams creates a new CreateTeamAccountParams object

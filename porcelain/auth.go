@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/netlify/open-api/go/models"
-	"github.com/netlify/open-api/go/plumbing/operations"
-	"github.com/netlify/open-api/go/porcelain/context"
+	"github.com/netlify/go-client/models"
+	"github.com/netlify/go-client/plumbing/operations"
+	"github.com/netlify/go-client/porcelain/context"
 	"github.com/sirupsen/logrus"
 )
 

@@ -13,7 +13,7 @@ import (
 
 	strfmt "github.com/go-openapi/strfmt"
 
-	models "github.com/netlify/open-api/go/models"
+	models "github.com/netlify/go-client/models"
 )
 
 // GetSiteMetadataReader is a Reader for the GetSiteMetadata structure.
