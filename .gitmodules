@@ -1,3 +1,0 @@
-[submodule "vendor/github.com/netlify/open-api"]
-	path = vendor/github.com/netlify/open-api
-	url = git@github.com:netlify/open-api.git
