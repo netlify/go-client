@@ -1,0 +1,33 @@
+module github.com/netlify/go-client
+
+require (
+	github.com/Azure/go-autorest v9.6.0+incompatible
+	github.com/PuerkitoBio/purell v1.1.0
+	github.com/PuerkitoBio/urlesc v0.0.0-20170810143723-de5bf2ad4578
+	github.com/asaskevich/govalidator v0.0.0-20171111151018-521b25f4b05f
+	github.com/cenkalti/backoff v1.1.0
+	github.com/davecgh/go-spew v1.1.0
+	github.com/dgrijalva/jwt-go v3.1.0+incompatible
+	github.com/go-openapi/analysis v0.0.0-20170813233457-8ed83f2ea9f0
+	github.com/go-openapi/errors v0.0.0-20170426151106-03cfca65330d
+	github.com/go-openapi/jsonpointer v0.0.0-20170102174223-779f45308c19
+	github.com/go-openapi/jsonreference v0.0.0-20161105162150-36d33bfe519e
+	github.com/go-openapi/loads v0.0.0-20171020172901-c3e1ca4c0b61
+	github.com/go-openapi/runtime v0.0.0-20171128170344-94927f8c9742
+	github.com/go-openapi/spec v0.0.0-20171129162811-5a4a1e94454f
+	github.com/go-openapi/strfmt v0.0.0-20170822153411-610b6cacdcde
+	github.com/go-openapi/swag v0.0.0-20171111214437-cf0bdb963811
+	github.com/go-openapi/validate v0.0.0-20171117174350-d509235108fc
+	github.com/mailru/easyjson v0.0.0-20171120080333-32fa128f234d
+	github.com/mitchellh/mapstructure v0.0.0-20171017171808-06020f85339e
+	github.com/pmezard/go-difflib v1.0.0
+	github.com/rsc/goversion v0.0.0-20170920182744-b792656d1049
+	github.com/sirupsen/logrus v1.0.3
+	github.com/stretchr/testify v1.1.4
+	golang.org/x/crypto v0.0.0-20171128194009-94eea52f7b74
+	golang.org/x/net v0.0.0-20171129192339-a8b929477797
+	golang.org/x/sys v0.0.0-20171130013927-13fcbd661c8e
+	golang.org/x/text v0.0.0-20171130091538-75cc3cad82b5
+	gopkg.in/mgo.v2 v2.0.0-20160818020120-3f83fa500528
+	gopkg.in/yaml.v2 v2.0.0-20171116090243-287cf08546ab
+)
