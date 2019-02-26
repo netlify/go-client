@@ -30,7 +30,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for more info on how to make contribution
 
 MIT. See [LICENSE](LICENSE) for more details.
 
-[godoc-img]: https://godoc.org/github.com/netlify/go-client/?status.svg
+[godoc-img]: https://godoc.org/github.com/netlify/go-client?status.svg
 [godoc]: https://godoc.org/github.com/netlify/go-client
 [goreport-img]: https://goreportcard.com/badge/github.com/netlify/go-client
 [goreport]: https://goreportcard.com/report/github.com/netlify/go-client
